@@ -1,0 +1,37 @@
+d: 64
+N_attack: 500
+K: 10
+W: 20
+T_factor: 3
+lr: 0.005
+local_epochs: 1
+local_batch: 256
+warmup_optimizer: adam
+warmup_lr: 1.0e-3
+warmup: 200
+warmup_overrides:
+  lastfm: 200
+  ml: 200
+  delicious: 200
+clients_per_round: 128
+warmup_clients_per_round:
+  lastfm: 2000
+  ml: 2000
+  delicious: 2000
+seed: 42
+reps_per_pair:
+  mf: 16
+  lightgcn: 16
+  ncf: 64
+ncf:
+  M: 3
+  ridge_lambda: 1.0e-4
+  saturating_steps: 500
+  saturating_lr: 0.05
+probes:
+  eps_rel: 1.0e-3
+lightgcn:
+  hops: 2
+he:
+  enabled: true
+  noise_std: 1.0e-6

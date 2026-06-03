@@ -1,0 +1,45 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+env/
+venv/
+
+# ---- Datasets (not distributed; see README) ----
+data_local/
+data/
+
+# ---- Experiment outputs / artifacts ----
+results/
+logs/
+*.npz
+*.pt
+*.ckpt
+
+# ---- Paper sources (kept private, never published) ----
+draft/
+*.tex
+*.bib
+*.aux
+*.bbl
+*.blg
+*.docx
+*.pdf
+
+# ---- Local assistant / editor / OS files ----
+CLAUDE.md
+.claude/
+.vscode/
+.idea/
+.DS_Store
+
+# ---- One-off / machine-specific dev scripts (excluded from the public repo) ----
+scripts/_chain_he_then_tradeoff.sh
+scripts/build_run4_doc.py
+scripts/run_ab_timing.py
+scripts/tune_ncf_M.py
+scripts/launch_baseline_rerun.sh
+scripts/launch_dlg_rerun.sh
+scripts/launch_lti_raifle_rerun.sh

@@ -1,0 +1,175 @@
+d: 64
+N_attack: 500
+K: 10
+W: 20
+T_factor: 3
+# Attack phase optimizer = plain SGD (the paired-probe math requires Δ = −η·grad).
+# Warmup can use Adam for faster/better convergence — reported ranking metrics
+# improve by ~50-100× vs plain SGD at the same round count.
+lr: 0.005             # attack-phase SGD lr (DO NOT CHANGE; attack math depends on this)
+local_epochs: 1
+# Per-dataset local_epochs override. Large datasets see each user only a few times
+# across 200 warmup rounds (cpr_warmup=2000 / n_users); local_epochs scales up
+# the number of BPR passes each sampled client runs, targeting ~30 epochs/user.
+local_epochs_overrides:
+  lastfm: 1           # 211 epochs/user at local_epochs=1 → already overtrained
+  ml: 1               # ~530 (now per-user split, all users have test items)
+  delicious: 1        # ~215
+  douban-book: 2      # bumped from 1 → ~63 epochs
+  # Big datasets: was 5-10, reduced to 3 — centralized BPR convergence is
+  # adequate at total_epochs = 30 * 3 = 90 epochs (each item still gets
+  # 10s-100s of BPR updates). Larger values 3x'd compute without measurable
+  # cos improvement on amazon-beauty (verified at local_epochs=10).
+  amazon-kindle: 3
+  gowalla: 3
+  yelp2018: 3
+  amazon-beauty: 3
+  amazon-book: 3
+  iFashion: 3
+local_batch: 256
+# Warmup-phase optimizer override. Adam works best for MF/LightGCN; NCF's
+# saturating-probe attack is calibrated for SGD-trained MLP weights (Adam grows
+# MLP weights too aggressively, breaking the M=3 saturation assumption).
+warmup_optimizer: adam
+warmup_lr: 1.0e-3
+warmup_optimizer_per_model:
+  mf: adam
+  lightgcn: adam
+  ncf: sgd
+warmup_lr_per_model:
+  mf: 1.0e-3
+  lightgcn: 1.0e-3
+  ncf: 0.005
+# Per-model weight decay at warmup. MF has no graph regularization, so on large
+# sparse catalogs its embedding norms explode (observed 6× std in amazon-book);
+# L2 weight decay stabilizes training. LightGCN self-regularizes via graph mean,
+# NCF uses SGD so we keep wd=0 to avoid interfering with the paper's default.
+warmup_weight_decay_per_model:
+  mf: 1.0e-4
+  lightgcn: 0.0
+  ncf: 0.0
+warmup: 400
+# Per-dataset warmup rounds (centralized BPR — n_rounds*local_epochs total epochs).
+# Bumped to 400+ for the 4 reported datasets so item embeddings fully converge
+# (was 200; produced cos=0.77 for delicious/mf — too weak). Sparse-catalog
+# datasets (delicious 69k items, douban-book 22k) need more passes to learn.
+warmup_overrides:
+  lastfm: 400
+  ml: 400
+  delicious: 600
+  douban-book: 400
+  # 6 large datasets — VERY short warmup (cos+timing only, ranking metrics
+  # not reported; even centralized BPR on 50k-300k users is too slow at
+  # 100 epochs — measured 58 min for amazon-beauty/mf alone — so cap to 30
+  # epochs which is enough for item embeddings to develop enough structure
+  # for TRIP recovery to work (cos > 0.85 expected on most pairs).
+  amazon-beauty: 30
+  amazon-book: 30
+  amazon-kindle: 20
+  gowalla: 30
+  iFashion: 15
+  yelp2018: 30
+clients_per_round: 128
+# Per-dataset warmup clients_per_round override. For small datasets we use ALL train
+# users every round (centralized-equivalent FedAvg) so every user is trained every round.
+# For large datasets we cap to keep compute practical — but the runner always force-includes
+# the 500 attacked users every round regardless.
+warmup_clients_per_round:
+  lastfm: 2000       # > n_train_users=1892 → all users
+  ml: 2000           # > 755
+  delicious: 2000    # > 1867
+  douban-book: 2000  # partial coverage (n=12638); still huge improvement
+  amazon-beauty: 2000
+  amazon-book: 2000
+  amazon-kindle: 2000
+  gowalla: 2000
+  iFashion: 2000
+  yelp2018: 2000
+seed: 42
+
+# Per-model overrides — boosted to strengthen probe-row signal vs noise from
+# strong-converged item embeddings. Larger reps → larger c_u (per-user BPR
+# scalar), which dominates O(η²) drift noise.
+reps_per_pair:
+  mf: 32
+  lightgcn: 32
+  ncf: 128
+
+ncf:
+  # M was 3; bumped to 8 because centralized warmup grows MLP weights more
+  # aggressively than federated warmup did, breaking the ReLU-saturation
+  # assumption that NCF recovery depends on. 8 keeps probe magnitudes safely
+  # in the saturating regime.
+  M: 8
+  ridge_lambda: 1.0e-4
+  saturating_steps: 500
+  saturating_lr: 0.05
+
+probes:
+  eps_rel: 1.0e-3   # |p_pos - p_neg| / |p_neg|
+
+lightgcn:
+  hops: 2
+
+# DLG (Zhu, Liu, Han — NeurIPS 2019) attack knobs. Per-user L-BFGS, matches
+# the published configuration. NCF's simulator unrolls an MLP forward+backward
+# per inner iter, so we cut iters proportionally to keep wall-clock reasonable.
+dlg:
+  max_iter: 500
+  tol: 1.0e-6
+  n_restarts: 3
+  max_iter_per_model:
+    mf: 500
+    lightgcn: 500
+    ncf: 100          # MLP rollout is ~20× slower than MF's closed-form sim
+
+# Inverting Gradients (Geiping et al. — NeurIPS 2020) attack knobs. Per-user
+# Adam with cosine-similarity loss + signed-gradient step per §3.2. TV prior
+# dropped (image-specific).
+invert_grad:
+  lr: 0.1
+  n_iter: 300
+  signed_grad: true
+  n_iter_per_model:
+    # 4-dataset run already finished with 1000/1000/200; the 6 big datasets
+    # use these caps to fit in overnight budget.
+    mf: 300
+    lightgcn: 300
+    ncf: 100
+
+# LtI (Wu, Chen, Guo, Weinberger — UAI 2023) attack knobs. 3-layer MLP
+# regressor trained on the SHADOW half (uids[:N/2]) and evaluated on the
+# TARGET half via eval_mask. Top-K-row magnitude features are server-
+# agnostic (no train_pos knowledge) — this is the model-independent
+# feature engineering from the original paper.
+lti:
+  topk_rows: 8
+  hidden: [256, 128]
+  n_epochs: 200
+  lr: 1.0e-3
+
+# RAIFLE (Pham, Kulkarni, Houmansadr — NDSS 2025) attack knobs. Server perturbs
+# the K most-popular item embeddings to alpha-scaled orthonormal directions
+# before the observation round, then per-user Adam reconstruction (same loss as
+# DLG-Adam). Restored after solve so subsequent runs see clean state.
+raifle:
+  n_probes: 64
+  alpha: 1.0
+  adam_lr: 0.05
+  max_iter: 300
+  n_restarts: 3
+  max_iter_per_model:
+    # 4-dataset run finished with 1000/1000/200; 6 big datasets capped lower
+    # to fit overnight budget.
+    mf: 300
+    lightgcn: 300
+    ncf: 100
+
+# Homomorphic-encryption simulation. Additive HE (Paillier/BFV/CKKS) lets the server
+# sum ciphertexts without decrypting individuals — the attack only ever needs the
+# sum, so HE offers no algebraic protection. The only realistic cost is fixed-point
+# precision loss at the client encode step. Disabled by default; configs/he.yaml
+# enables it for the ablation experiments.
+he:
+  enabled: false
+  noise_std: 1.0e-6   # per-coord precision loss; CKKS 20-bit scale ≈ 1e-6

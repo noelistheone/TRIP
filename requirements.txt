@@ -1,0 +1,8 @@
+# Core dependencies for the FL + TRIP codebase.
+# Install PyTorch matching your CUDA version first, e.g.:
+#   pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+torch>=2.4
+numpy>=1.24
+scipy>=1.10
+tqdm>=4.64
+pyyaml>=6.0
