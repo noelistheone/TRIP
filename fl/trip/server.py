@@ -310,9 +310,10 @@ class TRIPServer:
                 # NCF: damp MLP body inside this round only (suppresses MLP
                 # gradient residual that contaminates GMF recovery). The
                 # finally-block restore() reverts this for the next round.
-                if isinstance(self.model, NCFModel):
+                gamma = float((self.cfg.get("ncf") or {}).get("damp_factor", 0.1))
+                if isinstance(self.model, NCFModel) and gamma != 1.0:
                     from .probes import damp_ncf_mlp
-                    damp_ncf_mlp(self.model, factor=0.1)
+                    damp_ncf_mlp(self.model, factor=gamma)
                 local_assign = allocator.assignments_for_round(t)
                 # PACT BC-2: a block participates all-or-none, so the server can
                 # only address whole blocks. The exposure operator then factors
