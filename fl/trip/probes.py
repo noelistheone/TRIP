@@ -26,8 +26,15 @@ import torch
 from ..models import FLModel, NCFModel
 
 
-def init_paired_probes(model: FLModel, K: int, eps_rel: float) -> Tuple[List[Tuple[int, int]], None]:
-    """Append 2K probe rows; return list of (pos_id, neg_id) pairs."""
+def init_paired_probes(model: FLModel, K: int, eps_rel: float,
+                       base_rel: float = None, jitter_rel: float = None) -> Tuple[List[Tuple[int, int]], None]:
+    """Append 2K probe rows; return list of (pos_id, neg_id) pairs.
+
+    Default: base ~ N(0, eps^2), jitter ~ N(0, (eps/10)^2) with eps = eps_rel*sigma.
+    `base_rel` / `jitter_rel` (in units of the catalogue std) decouple the two,
+    e.g. an adaptive attacker keeps the base at catalogue scale and widens only
+    the pair separation.
+    """
     device = model.item_emb.weight.device
     sigma = float(model.item_emb.weight.std().item())
     eps = max(eps_rel * sigma, 1e-6)
@@ -37,8 +44,10 @@ def init_paired_probes(model: FLModel, K: int, eps_rel: float) -> Tuple[List[Tup
     g = torch.Generator(device=device).manual_seed(2024_1019)
     with torch.no_grad():
         for k in range(K):
-            base = torch.randn(model.d, generator=g, device=device) * eps
-            jitter = torch.randn(model.d, generator=g, device=device) * (eps * 0.1)
+            base = torch.randn(model.d, generator=g, device=device) * (
+                eps if base_rel is None else base_rel * sigma)
+            jitter = torch.randn(model.d, generator=g, device=device) * (
+                eps * 0.1 if jitter_rel is None else jitter_rel * sigma)
             pos_id = n_old + 2 * k
             neg_id = n_old + 2 * k + 1
             model.item_emb.weight.data[pos_id] = base + jitter

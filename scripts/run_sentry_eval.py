@@ -45,6 +45,8 @@ def main():
     ap.add_argument("--model", default="mf")
     ap.add_argument("--config", default="configs/default.yaml")
     ap.add_argument("--benign-rounds", type=int, default=120)
+    ap.add_argument("--fresh-rounds", type=int, default=200,
+                    help="Benign rounds AFTER the calibration window, used only to measure false alarms.")
     ap.add_argument("--attack-rounds", type=int, default=40)
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--gpu", type=int, default=None)
@@ -74,11 +76,12 @@ def main():
     # Honest cold-start items: same count as the attack's 2K probes, drawn
     # independently from the catalog's own distribution. Without this control the
     # detector would only be distinguishing "catalog grew" from "catalog did not".
-    _cat = model.item_emb.weight.detach().cpu().numpy()
-    _sv = float(_cat.std())
-    def benign_append():
+    # Cold-start rows are drawn at the CURRENT catalogue scale: the catalogue
+    # shrinks under weight decay, and a fixed-scale control would drift away
+    # from the calibration rounds for reasons unrelated to any attack.
+    def benign_append(cat):
         k = int(rng.poisson(2 * int(cfg["K"])))          # variable cold-start volume
-        return rng.normal(0.0, _sv, size=(max(k, 2), d))
+        return rng.normal(0.0, float(cat.std()), size=(max(k, 2), d))
     benign, prev_recv, prev_recv_state = [], None, None
     for r in range(a.benign_rounds):
         recv = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()
@@ -94,15 +97,43 @@ def main():
         # A benign round also appends cold-start items; draw a comparable number
         # of genuinely NEW rows so `nn_dup` and `mag_z` are not trivially
         # separable just because benign rounds append nothing.
-        benign.append(extract(benign_append(), cat, cur, prev_recv, ident, len(cur), 0.0))
+        benign.append(extract(benign_append(cat), cat, cur, prev_recv, ident, len(cur), 0.0))
         prev_recv = cur
     benign = np.asarray(benign)
+    snap_after_benign = server.snapshot()
+    prev_fresh = prev_recv
+    prev_state_fresh = prev_recv_state
+
+    # ---------- fresh benign rounds, strictly after calibration ----------
+    # (the first version measured false alarms on the calibration rounds
+    # themselves, which is in-sample and meaningless)
+    fresh = []
+    for r in range(a.fresh_rounds):
+        recv = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+                if not k.startswith("user_emb.")}
+        ident = sum(1 for k, v in recv.items() if k in prev_state_fresh and torch.equal(v, prev_state_fresh[k]))
+        prev_state_fresh = recv
+        cur = tnorms(model)
+        s_ = [int(x) for x in rng.choice(np.asarray(uids), size=min(128, len(uids)), replace=False)]
+        server.run_round(s_, probe_assign=None, reps_per_pair=1)
+        cat = model.item_emb.weight.detach().cpu().numpy()
+        fresh.append(extract(benign_append(cat), cat, cur, prev_fresh, ident, len(cur), 0.0))
+        prev_last = prev_fresh
+        prev_fresh = cur
+    fresh = np.asarray(fresh)
+
+    cat_fresh, cur_fresh = cat, cur
+    prev_recv, prev_recv_state = prev_fresh, prev_state_fresh   # attack follows the fresh rounds
+    import copy as _copy
+    model_pre_attack = _copy.deepcopy(model)   # catalogue without probes
 
     # ---------- real TRIP attack rounds ----------
     K, W, Tf = int(cfg["K"]), int(cfg["W"]), int(cfg["T_factor"])
     n_before = model.item_emb.weight.shape[0]
-    pair_ids, _ = init_paired_probes(model, K, cfg["probes"]["eps_rel"])
-    if isinstance(model, NCFModel):
+    pair_ids, _ = init_paired_probes(model, K, cfg["probes"]["eps_rel"],
+                                     base_rel=cfg["probes"].get("base_rel"),
+                                     jitter_rel=cfg["probes"].get("jitter_rel"))
+    if isinstance(model, NCFModel) and bool(cfg.get("ncf", {}).get("saturating_probes", False)):
         overwrite_ncf_probes_saturating(model, pair_ids, M=float(cfg["ncf"]["M"]),
                                         eps_rel=cfg["probes"]["eps_rel"])
     new_rows = model.item_emb.weight.detach().cpu().numpy()[n_before:]
@@ -138,51 +169,60 @@ def main():
             server.restore(snap)
     attack = np.asarray(attack)
 
-    # ---------- fit one-class on benign only ----------
-    n = len(benign); cut = n // 2
-    S = Sentry(alpha=a.alpha).fit(benign[:cut], benign[cut:])
-    det = float(np.mean([S.flag(x)[0] for x in attack]))
-    fa = float(np.mean([S.flag(x)[0] for x in benign[cut:]]))
-    syn = synth_attack_rounds(benign, 400, rng)
-    det_syn = float(np.mean([S.flag(x)[0] for x in syn]))
+    # Detector features: only the catalogue-based ones, which are stationary
+    # under benign training. Norm ratios drift as the model trains, and the
+    # staleness indicator has zero benign variance; both are reported, not used.
+    USE = [FEATURES.index(f) for f in ("nn_dup", "growth", "mag_z")]
+    h = len(benign) // 2          # split conformal: fit on one half, calibrate on the other
+    S = Sentry(alpha=a.alpha).fit(benign[:h][:, USE], calib=benign[h:][:, USE])
+    det = float(np.mean([S.flag(x[USE])[0] for x in attack]))
+    fa = float(np.mean([S.flag(x[USE])[0] for x in fresh]))
+    per = {}
+    for f in ("nn_dup", "growth", "mag_z"):
+        i = FEATURES.index(f)
+        Si = Sentry(alpha=a.alpha).fit(benign[:h][:, [i]], calib=benign[h:][:, [i]])
+        per[f] = (float(np.mean([Si.flag(x[[i]])[0] for x in attack])),
+                  float(np.mean([Si.flag(x[[i]])[0] for x in fresh])))
 
-    # `alien_pos` is a DIRECT observation of the probes-only instruction, so with
-    # it detection is trivial and says nothing interesting. The real question is
-    # whether the attack is still visible to a client that is told nothing --
-    # i.e. from the broadcast model and catalog alone.
-    obs = [i for i, f in enumerate(FEATURES) if f != "alien_pos"]
-    Sp = Sentry(alpha=a.alpha).fit(benign[:cut][:, obs], benign[cut:][:, obs])
-    det_passive = float(np.mean([Sp.flag(x[obs])[0] for x in attack]))
-    fa_passive = float(np.mean([Sp.flag(x[obs])[0] for x in benign[cut:]]))
+    # Evasion, measured with the full detector (not extrapolated from one feature).
+    # "scaled": the attack's own construction with eps_rel = eps (base and pair
+    # separation both grow with eps). "adaptive": base kept at catalogue scale,
+    # the pair separation s is widened while the base variance is lowered to
+    # 1 - s^2, so every probe row keeps the catalogue's marginal N(0, sigma^2);
+    # at s = 1/sqrt(2) the two rows of a pair are independent draws.
+    from fl.trip import init_paired_probes as _ipp
+    def _probe_feats(**kw):
+        mm = _copy.deepcopy(model_pre_attack); n0 = mm.item_emb.weight.shape[0]
+        _ipp(mm, int(cfg["K"]), **kw)
+        rows = mm.item_emb.weight.detach().cpu().numpy()[n0:]
+        x = extract(rows, cat_fresh, cur_fresh, prev_last, 0, len(cur_fresh), 1.0)
+        flag, pv = S.flag(x[USE])
+        return {"detected": bool(flag), "p": float(pv),
+                **{f: float(x[FEATURES.index(f)]) for f in ("nn_dup", "growth", "mag_z")}}
+    ev = {str(e): _probe_feats(eps_rel=float(e))
+          for e in (1e-3, 1e-1, 1.0, 3.0, 5.0, 10.0, 20.0, 50.0)}
+    ev_adapt = {str(s_): _probe_feats(eps_rel=1e-3, base_rel=float(np.sqrt(1 - s_ * s_)),
+                                      jitter_rel=float(s_))
+                for s_ in (0.1, 0.3, 0.5, 0.6, 0.707)}
 
-    print(f"\n{a.dataset}/{a.model}  benign={len(benign)}  real attack rounds={len(attack)}")
-    print(f"  detection rate (REAL TRIP rounds) : {det:.3f}")
-    print(f"  detection rate (synthetic class)  : {det_syn:.3f}")
-    print(f"  false-alarm rate (held-out benign): {fa:.3f}   (conformal target alpha={a.alpha})")
-    print(f"  -- broadcast-only (no instruction feature) --")
-    print(f"  detection rate                    : {det_passive:.3f}")
-    print(f"  false-alarm rate                  : {fa_passive:.3f}")
-    print(f"\n  {'feature':<12}{'benign med':>12}{'attack med':>12}{'robust z':>11}")
-    for i, f in enumerate(FEATURES):
-        z = abs((np.median(attack[:, i]) - S.med[i]) / S.mad[i])
-        print(f"  {f:<12}{S.med[i]:>12.4g}{np.median(attack[:, i]):>12.4g}{z:>11.2f}")
-    # single-feature ablation: which signature is load-bearing?
-    print(f"\n  single-feature detection / false-alarm (which signature carries it):")
-    for i, f in enumerate(FEATURES):
-        Si = Sentry(alpha=a.alpha).fit(benign[:cut][:, [i]], benign[cut:][:, [i]])
-        di = float(np.mean([Si.flag(x[[i]])[0] for x in attack]))
-        fi = float(np.mean([Si.flag(x[[i]])[0] for x in benign[cut:]]))
-        deg = "  <-- degenerate (benign MAD ~ 0)" if S.mad[i] < 1e-6 else ""
-        print(f"    {f:<12} det={di:.3f}  fa={fi:.3f}{deg}")
-
+    print(f"\n{a.dataset}/{a.model}  calibration={len(benign)}  fresh benign={len(fresh)}  attack={len(attack)}")
+    print(f"  detection (real TRIP rounds)      : {det:.3f}")
+    print(f"  false alarm (FRESH benign rounds) : {fa:.3f}   (alpha={a.alpha})")
+    for f, (d_, fa_) in per.items():
+        print(f"    {f:<8} det={d_:.3f} fa={fa_:.3f}")
+    print("  scaled  :", {k: v["detected"] for k, v in ev.items()})
+    print("  adaptive:", {k: (v["detected"], round(v["nn_dup"], 3), round(v["mag_z"], 3)) for k, v in ev_adapt.items()})
     o = Path(a.out); o.mkdir(parents=True, exist_ok=True)
     (o / f"{a.dataset}_{a.model}.json").write_text(json.dumps(
         {"dataset": a.dataset, "model": a.model, "alpha": a.alpha,
-         "detection_real": det, "detection_synthetic": det_syn, "false_alarm": fa,
-         "detection_broadcast_only": det_passive, "false_alarm_broadcast_only": fa_passive,
-         "features": FEATURES,
-         "benign_median": S.med.tolist(), "attack_median": np.median(attack, 0).tolist()},
-        indent=2))
+         "features_used": ["nn_dup", "growth", "mag_z"],
+         "detection_real": det, "false_alarm_fresh": fa, "per_feature": per,
+         "n_fit": h, "n_calibration": len(benign) - h, "n_fresh": len(fresh), "n_attack": len(attack),
+         "evasion_scaled": ev, "evasion_adaptive": ev_adapt,
+         "benign_feature_median": {f: float(np.median(benign[:, FEATURES.index(f)]))
+                                   for f in ("nn_dup", "growth", "mag_z")},
+         "raw": {"features": FEATURES, "benign": benign.tolist(),
+                 "fresh": fresh.tolist(), "attack": attack.tolist()}}, indent=2))
     print(f"\nsaved -> {o}/{a.dataset}_{a.model}.json")
 
 

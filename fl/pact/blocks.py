@@ -39,25 +39,47 @@ def _beacon_order(uids: Sequence[int], beacon: bytes) -> List[int]:
 
 def beacon_partition(uids: Sequence[int], t: int, beacon: bytes = b"pact-v1",
                      strata: Optional[Dict[int, int]] = None) -> Dict[int, int]:
-    """Return uid -> block id. Blocks have size `t` (the last may be smaller).
+    """Return uid -> block id, with EVERY block holding between t and 2t-1 clients.
 
-    With `strata` (uid -> activity bucket) the permutation is applied within each
-    bucket, so blocks are activity-homogeneous and `w_max` is bounded.
+    Blocks smaller than t would break the anonymity parameter (a singleton block
+    that participates whole isolates one client). So a stratum with fewer than t
+    members is carried into the next stratum, and the final short chunk of a
+    stratum is merged into that stratum's previous block. With stratification the
+    permutation is applied within each (merged) activity bucket, so blocks stay
+    activity-homogeneous where the population allows it.
     """
     t = max(1, int(t))
-    assign: Dict[int, int] = {}
-    nxt = 0
+    uids = [int(u) for u in uids]
+    if len(uids) < t:
+        return {u: 0 for u in uids}           # one block holding everyone
     if strata:
         groups: Dict[int, List[int]] = {}
         for u in uids:
-            groups.setdefault(int(strata.get(int(u), 0)), []).append(int(u))
-        ordered_groups = [groups[k] for k in sorted(groups)]
+            groups.setdefault(int(strata.get(u, 0)), []).append(u)
+        ordered = [groups[k] for k in sorted(groups)]
     else:
-        ordered_groups = [list(uids)]
-    for grp in ordered_groups:
+        ordered = [list(uids)]
+    # carry undersized strata forward so every processed group has >= t members
+    merged: List[List[int]] = []
+    carry: List[int] = []
+    for grp in ordered:
+        carry = carry + grp
+        if len(carry) >= t:
+            merged.append(carry); carry = []
+    if carry:
+        if merged:
+            merged[-1] = merged[-1] + carry
+        else:
+            merged.append(carry)
+    assign: Dict[int, int] = {}
+    nxt = 0
+    for grp in merged:
         order = _beacon_order(grp, beacon)
-        for i in range(0, len(order), t):
-            for u in order[i:i + t]:
+        n_full = len(order) // t              # >= 1 because len(order) >= t
+        for bi in range(n_full):
+            lo = bi * t
+            hi = (bi + 1) * t if bi < n_full - 1 else len(order)   # last block absorbs the remainder
+            for u in order[lo:hi]:
                 assign[u] = nxt
             nxt += 1
     return assign

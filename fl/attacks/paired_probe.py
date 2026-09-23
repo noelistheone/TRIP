@@ -36,14 +36,23 @@ class PairedProbeAttack(AttackBase):
 
             # Extend catalog with 2K paired probes
             model.n_items_original = bundle.n_items
-            pair_ids, _ = init_paired_probes(model, K=K, eps_rel=cfg["probes"]["eps_rel"])
+            pair_ids, _ = init_paired_probes(model, K=K, eps_rel=cfg["probes"]["eps_rel"],
+                                             base_rel=cfg["probes"].get("base_rel"),
+                                             jitter_rel=cfg["probes"].get("jitter_rel"))
             probe_base = None
             if isinstance(model, NCFModel):
-                probe_base = overwrite_ncf_probes_saturating(
-                    model, pair_ids,
-                    M=float(cfg["ncf"]["M"]),
-                    eps_rel=cfg["probes"]["eps_rel"],
-                )
+                if bool(cfg.get("ncf", {}).get("saturating_probes", False)):
+                    # Legacy large-norm probe centres (M * sigma_v). Kept only for
+                    # reproducing old results: probe magnitude does not suppress
+                    # the MLP residual (ReLU derivatives are scale-invariant).
+                    probe_base = overwrite_ncf_probes_saturating(
+                        model, pair_ids,
+                        M=float(cfg["ncf"]["M"]),
+                        eps_rel=cfg["probes"]["eps_rel"],
+                    )
+                else:
+                    d_ = int(cfg["d"])
+                    probe_base = model.fusion.weight.detach().clone().squeeze(0)[:d_]
 
             allocator = SlidingWindowAllocator(N=N, K=K, W=W, T_factor=T_factor)
             trip = TRIPServer(server.model, bundle, cfg, server.device)
@@ -61,19 +70,32 @@ class PairedProbeAttack(AttackBase):
             policy = getattr(self, "policy", None)
             G = trip.attack(attacked_uids, allocator, pair_ids,
                             reps_per_pair=reps, policy=policy)
-            A = allocator.build_A()
-            if (policy is not None and getattr(policy, "block_closed", False)
-                    and getattr(policy, "partition", None) is not None):
-                # Under BC the server can only address whole blocks, so the
-                # operator it actually realises is A.Pi.Pi^T (columns constant
-                # within a block). Give the ATTACK the correct operator -- the
-                # partition is public, so this is the strongest solver the
-                # server can mount, not a handicap.
-                from ..pact.blocks import pooling_matrix
-                import numpy as _np
-                Pi = pooling_matrix(range(len(attacked_uids)), policy.partition.assign)
-                A = A @ Pi @ Pi.T
-                A = _np.minimum(A, 1.0).astype(_np.float32)
+            # Build the operator that actually generated G. A client training m
+            # pairs in one round writes each with weight (reps / size of the
+            # mini-batch the pair falls in); probes-only batches are not shuffled.
+            # With K*W <= N and no block expansion every m is 1 and this is the
+            # 0/1 matrix of Lemma 1. The server chose the assignment, so it knows
+            # these weights; fitting the 0/1 matrix instead would handicap it.
+            B = int(cfg.get("local_batch", 256))
+            probes_only = bool(cfg.get("attack_probes_only", True))
+            A = np.zeros((allocator.T * K, len(attacked_uids)), dtype=np.float32)
+            for t_idx, assign in enumerate(trip.last_assignments):
+                for lu, ks in assign.items():
+                    ks_sorted = list(ks)
+                    if not probes_only:
+                        for k in ks_sorted:      # mixed batches: weights depend on |I_u|
+                            A[t_idx * K + k, lu] = 1.0
+                        continue
+                    total = len(ks_sorted) * reps
+                    for idx, k in enumerate(ks_sorted):
+                        lo, hi = idx * reps, (idx + 1) * reps
+                        wgt = 0.0
+                        for b0 in range(0, total, B):
+                            b1 = min(b0 + B, total)
+                            ov = max(0, min(hi, b1) - max(lo, b0))
+                            if ov:
+                                wgt += ov / (b1 - b0)
+                        A[t_idx * K + k, lu] = wgt
 
             self._state["G"] = G
             self._state["A"] = A

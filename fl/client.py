@@ -73,8 +73,13 @@ def _build_triples_pact(uid: int, train_items: List[int], n_real_items: int,
     nu = max(1, int(round(float(getattr(policy, "nu", 1.0)))))
     pos = np.asarray(train_items, dtype=np.int64)
     pos = np.repeat(pos, nu)
+    # A real client cannot tell injected rows from genuine ones: it samples over
+    # the whole catalogue it received (appended rows included), under the
+    # sampling distribution pinned in its build (uniform) -- never a server-
+    # supplied D_tau, which would let the server re-create a designed exposure.
+    n_catalogue = int(getattr(policy, "_n_catalogue", n_real_items))
     negs = sample_negatives(pact_rng, set(int(x) for x in train_items),
-                            int(n_real_items), len(pos))
+                            n_catalogue, len(pos))
     t = np.stack([np.full(len(pos), int(uid), dtype=np.int64), pos, negs], axis=1)
     order = pact_rng.integers(0, 1 << 30, len(t)).argsort()
     return t[order]
@@ -143,6 +148,7 @@ def local_train(model: FLModel,
                 return zero, user_emb_init.detach().clone()
             from .pact.prf import PactRng
             pact_rng = PactRng(policy.secret(uid), ctr)
+            policy._n_catalogue = int(model.item_emb.weight.shape[0])
 
     if opt_name == "adam":
         opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)

@@ -296,8 +296,16 @@ class TRIPServer:
         if progress:
             iterator = tqdm(iterator, desc="paired-probe attack", ncols=80)
 
+        base_round = self.round
+        # Realised per-round assignment (after any block expansion): the solver
+        # needs it to build the operator with the true 1/m and batch-split weights.
+        self.last_assignments: List[Dict[int, List[int]]] = []
         for t in iterator:
             snap = self.snapshot()
+            if policy is not None:
+                # A server that wants clients to participate must not replay round
+                # indices (clients refuse replays). Give every attack round a fresh one.
+                self.round = base_round + t
             try:
                 # NCF: damp MLP body inside this round only (suppresses MLP
                 # gradient residual that contaminates GMF recovery). The
@@ -321,6 +329,8 @@ class TRIPServer:
                     for b, ks in by_block.items():
                         for member in part.members[b]:
                             local_assign[member] = sorted(ks)
+                self.last_assignments.append({lu: list(ks) for lu, ks in local_assign.items()
+                                              if lu < len(attacked_uids)})
                 forced: List[int] = []
                 probe_assign: Dict[int, List[Tuple[int, int]]] = {}
                 for local_uid, ks in local_assign.items():
@@ -346,4 +356,6 @@ class TRIPServer:
                     G[t * K + k] = diff.detach().cpu().numpy()
             finally:
                 self.restore(snap)
+        if policy is not None:
+            self.round = base_round + len(self.last_assignments)
         return G

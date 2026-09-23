@@ -47,6 +47,9 @@ from fl.trip.server import TRIPServer
 from fl.utils import pick_gpu, set_seed
 
 
+FED_WD = 0.0
+
+
 def run_arm(arm, ds, mdl, cfg, device, n_rounds, cpr, eval_uids, seed,
             check_masks=False, from_warmup=True):
     set_seed(seed)
@@ -55,13 +58,20 @@ def run_arm(arm, ds, mdl, cfg, device, n_rounds, cpr, eval_uids, seed,
     model = make_model(mdl, bundle.n_users, bundle.n_items, d, cfg).to(device)
     model.n_items_original = bundle.n_items
     warm_cfg = _make_warmup_cfg(cfg, ds, mdl)
-    server = TRIPServer(model, bundle, warm_cfg, device)
+    # The warm-up (centralised) recipe uses Adam with COUPLED weight decay. In
+    # federated rounds every client builds a fresh optimiser, so the decay term
+    # wd*theta gives every item row a nonzero gradient and Adam's first step moves
+    # every row by ~lr*sign(theta): the item table collapses towards 0 in BOTH arms.
+    # Federated rounds therefore use the same optimiser without weight decay.
+    fed_cfg = dict(warm_cfg); fed_cfg["weight_decay"] = float(FED_WD)
+    server_warm_cfg = warm_cfg
+    server = TRIPServer(model, bundle, fed_cfg, device)
 
     # Both arms start from the SAME converged checkpoint, so the comparison is
     # about federated rounds under the defense, not about cold-start noise.
     if from_warmup:
         n_warm = int(_resolve_per_dataset(cfg, "warmup_overrides", ds, cfg.get("warmup", 200)))
-        cache = _warmup_cache_path(ds, mdl, cfg, warm_cfg, n_warm, bundle)
+        cache = _warmup_cache_path(ds, mdl, cfg, server_warm_cfg, n_warm, bundle)
         if _load_warmup(cache, model, server, device) is None:
             raise SystemExit(
                 f"no warm-up checkpoint for {ds}/{mdl}; run the main sweep first "
@@ -71,7 +81,7 @@ def run_arm(arm, ds, mdl, cfg, device, n_rounds, cpr, eval_uids, seed,
     part = None
     train_uids = sorted(bundle.train_user_ids)
     if arm == "pact":
-        policy = policy_from_cfg(cfg, warm_cfg)
+        policy = policy_from_cfg(cfg, fed_cfg)
         assert policy is not None, "arm 'pact' needs cfg['pact']['enabled']=true"
         strata = ({u: activity_bucket(len(bundle.train_pos.get(u, [])))
                    for u in train_uids} if policy.stratify else None)
@@ -80,6 +90,20 @@ def run_arm(arm, ds, mdl, cfg, device, n_rounds, cpr, eval_uids, seed,
         print(f"[pact] t={policy.t} blocks={len(part.members)} "
               f"recipe={policy.optimizer}/lr={policy.lr}/wd={policy.weight_decay}")
 
+    def _rank_now():
+        ks_ = (10, 20, 50)
+        acc_ = {f"{m}@{k}": [] for m in ("recall", "ndcg", "precision", "hr") for k in ks_}
+        for uid in eval_uids:
+            gt = bundle.test_pos.get(uid, [])
+            u = server.user_states.get(uid)
+            if not gt or u is None:
+                continue
+            sc = _score_user_against_items(model, u.detach().cpu(), bundle.n_items,
+                                           bundle.train_pos.get(uid, []), use_true_neighbors=True)
+            for k2, v in _ranking_metrics(sc, gt, list(ks_)).items():
+                acc_[k2].append(float(v))
+        return {k: (float(np.mean(v)) if v else 0.0) for k, v in acc_.items()}
+    start_rank = _rank_now()
     rng = np.random.default_rng(seed + 991)
     per_round, mask_ok, cohorts = [], True, []
     for r in range(n_rounds):
@@ -120,7 +144,7 @@ def run_arm(arm, ds, mdl, cfg, device, n_rounds, cpr, eval_uids, seed,
         for k2, v in m.items():
             acc[k2].append(float(v))
     rank = {k: (float(np.mean(v)) if v else 0.0) for k, v in acc.items()}
-    return dict(arm=arm, rounds=n_rounds, cohort=cpr,
+    return dict(arm=arm, rounds=n_rounds, cohort=cpr, start_ranking=start_rank,
                 cohort_mean=float(np.mean(cohorts)),
                 sec_per_client=float(np.sum(per_round) / max(np.sum(cohorts), 1)),
                 sec_per_round=float(np.mean(per_round)),
@@ -141,12 +165,16 @@ def main():
     ap.add_argument("--gpu", type=int, default=None)
     ap.add_argument("--out", default="results/defense_utility")
     ap.add_argument("--check-masks", action="store_true")
+    ap.add_argument("--fed-wd", type=float, default=0.0,
+                    help="Weight decay used in federated rounds (both arms).")
     ap.add_argument("--match-cohort", action="store_true", default=True,
                     help="Give the honest arm PACT's realised mean cohort, so the "
                          "comparison is not confounded by BC-4 over-provisioning.")
     ap.add_argument("--cold-start", action="store_true",
                     help="Start from random init instead of the cached warm-up.")
     a = ap.parse_args()
+    global FED_WD
+    FED_WD = a.fed_wd
 
     cfg = yaml.safe_load(open(a.config))
     device = pick_gpu(default=a.gpu)
@@ -171,6 +199,7 @@ def main():
                                 from_warmup=not a.cold_start))
         agg = {k: float(np.mean([r["ranking"][k] for r in runs])) for k in runs[0]["ranking"]}
         sd = {k: float(np.std([r["ranking"][k] for r in runs])) for k in runs[0]["ranking"]}
+        out.setdefault("start_ranking", runs[0]["start_ranking"])
         out["arms"][arm] = {
             "runs": runs, "ranking_mean": agg, "ranking_std": sd,
             "sec_per_round": float(np.mean([r["sec_per_round"] for r in runs])),
