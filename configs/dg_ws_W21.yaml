@@ -108,6 +108,7 @@ he:
 pact:
   enabled: true
   write_set:
+    weight_decay: 0.0      # pinned federated recipe (= honest arm)
     sovereignty: true
     pin_recipe: true
     nu: 1

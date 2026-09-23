@@ -3,6 +3,7 @@
 pact:
   enabled: true
   write_set:
+    weight_decay: 0.0      # pinned federated recipe (= honest arm)
     sovereignty: true       # WS-1/2: client owns positives AND negatives
     pin_recipe: true        # WS-3: ignore server optimizer / epoch overrides
     nu: 1                   # negatives per positive (the honest sampler's ratio)

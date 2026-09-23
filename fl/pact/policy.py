@@ -97,7 +97,11 @@ def policy_from_cfg(cfg: dict, warm_cfg: Optional[dict] = None) -> Optional[Clie
         nu=float(ws.get("nu", 1.0)),
         optimizer=str(w.get("optimizer", cfg.get("warmup_optimizer", "adam"))).lower(),
         lr=float(w.get("lr", cfg.get("warmup_lr", 1e-3))),
-        weight_decay=float(w.get("weight_decay", 0.0)),
+        # The pinned recipe is the honest FEDERATED recipe. Its weight decay is
+        # set explicitly: coupled decay under a per-round fresh Adam state moves
+        # every row and collapses the table, so federated rounds use 0.
+        weight_decay=float(ws["weight_decay"]) if "weight_decay" in ws
+                     else float(w.get("weight_decay", 0.0)),
         local_epochs=int(w.get("local_epochs", cfg.get("local_epochs", 1))),
         local_batch=int(cfg.get("local_batch", 256)),
         block_closed=bool(bl.get("block_closed", p.get("schedule", {}).get("block_closed", True))),
