@@ -12,8 +12,7 @@ import numpy as np
 import torch
 
 from fl.data import DatasetBundle
-from fl.models import build_model
-from fl.server import FedAvgServer
+from fl.models import make_model
 from fl.trip import (SlidingWindowAllocator, TRIPServer, init_paired_probes,
                      solve_mf_lgcn)
 
@@ -60,20 +59,19 @@ def test_mf_end_to_end():
     }
     bundle, U_true = build_toy_bundle(n_users=50, n_items=200, d=8, seed=0)
     device = torch.device("cpu")
-    model = build_model("mf", bundle.n_users, bundle.n_items, cfg["d"], cfg)
-    server = FedAvgServer(model, bundle, cfg, device)
+    model = make_model("mf", bundle.n_users, bundle.n_items, cfg["d"], cfg)
+    server = TRIPServer(model, bundle, cfg, device)
 
-    server.warmup(cfg["warmup"], forced=set(range(50)), progress=False,
-                  clients_per_round=50)
+    server.warmup(cfg["warmup"], attacked_uids=list(range(50)),
+                  clients_per_round=50, progress=False)
 
     # snapshot the warmup-frozen user_states as true_U_warmup.
     true_U_warmup = torch.stack([server.user_states[u] for u in range(50)]).numpy()
     model.n_items_original = bundle.n_items
 
     alloc = SlidingWindowAllocator(N=50, K=cfg["K"], W=cfg["W"], T_factor=cfg["T_factor"])
-    pair_ids, _ = init_paired_probes(model, K=cfg["K"])
-    trip = TRIPServer(model, bundle, cfg, device)
-    trip.user_states = server.user_states
+    pair_ids, _ = init_paired_probes(model, cfg["K"], cfg["probes"]["eps_rel"])
+    trip = server
     G = trip.attack(list(range(50)), alloc, pair_ids,
                     reps_per_pair=cfg["reps_per_pair"]["mf"], progress=False)
     A = alloc.build_A()

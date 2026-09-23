@@ -1,0 +1,107 @@
+d: 64
+N_attack: 500
+K: 10
+W: 21
+T_factor: 3
+lr: 0.005
+local_epochs: 1
+local_epochs_overrides:
+  lastfm: 1
+  ml: 1
+  delicious: 1
+  douban-book: 2
+  amazon-kindle: 3
+  gowalla: 3
+  yelp2018: 3
+  amazon-beauty: 3
+  amazon-book: 3
+  iFashion: 3
+local_batch: 256
+warmup_optimizer: adam
+warmup_lr: 0.001
+warmup_optimizer_per_model:
+  mf: adam
+  lightgcn: adam
+  ncf: sgd
+warmup_lr_per_model:
+  mf: 0.001
+  lightgcn: 0.001
+  ncf: 0.005
+warmup_weight_decay_per_model:
+  mf: 0.0001
+  lightgcn: 0.0
+  ncf: 0.0
+warmup: 400
+warmup_overrides:
+  lastfm: 400
+  ml: 400
+  delicious: 600
+  douban-book: 400
+  amazon-beauty: 30
+  amazon-book: 30
+  amazon-kindle: 20
+  gowalla: 30
+  iFashion: 15
+  yelp2018: 30
+clients_per_round: 128
+warmup_clients_per_round:
+  lastfm: 2000
+  ml: 2000
+  delicious: 2000
+  douban-book: 2000
+  amazon-beauty: 2000
+  amazon-book: 2000
+  amazon-kindle: 2000
+  gowalla: 2000
+  iFashion: 2000
+  yelp2018: 2000
+seed: 42
+reps_per_pair:
+  mf: 32
+  lightgcn: 32
+  ncf: 128
+ncf:
+  M: 8
+  ridge_lambda: 0.0001
+  saturating_steps: 500
+  saturating_lr: 0.05
+probes:
+  eps_rel: 0.001
+lightgcn:
+  hops: 2
+dlg:
+  max_iter: 500
+  tol: 1.0e-06
+  n_restarts: 3
+  max_iter_per_model:
+    mf: 500
+    lightgcn: 500
+    ncf: 100
+invert_grad:
+  lr: 0.1
+  n_iter: 300
+  signed_grad: true
+  n_iter_per_model:
+    mf: 300
+    lightgcn: 300
+    ncf: 100
+lti:
+  topk_rows: 8
+  hidden:
+  - 256
+  - 128
+  n_epochs: 200
+  lr: 0.001
+raifle:
+  n_probes: 64
+  alpha: 1.0
+  adam_lr: 0.05
+  max_iter: 300
+  n_restarts: 3
+  max_iter_per_model:
+    mf: 300
+    lightgcn: 300
+    ncf: 100
+he:
+  enabled: true
+  noise_std: 1.0e-05

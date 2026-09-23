@@ -57,6 +57,29 @@ def _build_triples(uid: int, train_items: List[int], n_real_items: int,
     return all_t
 
 
+def _build_triples_pact(uid: int, train_items: List[int], n_real_items: int,
+                        pact_rng, policy) -> np.ndarray:
+    """WS-1 + WS-2: positives are the client's own; negatives come from the
+    client's PRF over the whole committed catalog.
+
+    This is the HONEST sampler of `fl/data.py::bpr_sample` with its randomness
+    re-sourced from a client-held key, so by a single PRF hybrid the training
+    trace has the same distribution (Theorem 4) -- while the server can no
+    longer predict, let alone choose, which rows this client writes (Theorem 1).
+    """
+    from .pact.prf import sample_negatives
+    if not train_items:
+        return np.zeros((0, 3), dtype=np.int64)
+    nu = max(1, int(round(float(getattr(policy, "nu", 1.0)))))
+    pos = np.asarray(train_items, dtype=np.int64)
+    pos = np.repeat(pos, nu)
+    negs = sample_negatives(pact_rng, set(int(x) for x in train_items),
+                            int(n_real_items), len(pos))
+    t = np.stack([np.full(len(pos), int(uid), dtype=np.int64), pos, negs], axis=1)
+    order = pact_rng.integers(0, 1 << 30, len(t)).argsort()
+    return t[order]
+
+
 def local_train(model: FLModel,
                 global_shared: Dict[str, torch.Tensor],
                 user_emb_init: torch.Tensor,
@@ -67,6 +90,7 @@ def local_train(model: FLModel,
                 probe_pair_ids: Optional[List[Tuple[int, int]]] = None,
                 reps_per_pair: int = 16,
                 round_idx: int = 0,
+                policy=None,
                 ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
     """Run one client's local SGD; return (delta_shared, new_user_emb).
 
@@ -94,18 +118,47 @@ def local_train(model: FLModel,
     # explode). Attack phase sets wd=0 so probe-row deltas stay linear in grad.
     opt_name = str(cfg.get("optimizer", "sgd")).lower()
     wd = float(cfg.get("weight_decay", 0.0))
+    lr = cfg["lr"]
+    local_epochs = int(cfg["local_epochs"])
+    probes_only = bool(cfg.get("attack_probes_only", False))
+    pact_rng = None
+
+    # ---- PACT WS: the client's write set and recipe are its own ----------
+    if policy is not None and getattr(policy, "enabled", False):
+        if policy.pin_recipe:
+            # WS-3: optimizer / wd / epochs come from the pinned recipe, not
+            # from anything the server shipped this round.
+            opt_name, wd, lr = policy.optimizer, policy.weight_decay, policy.lr
+            local_epochs = policy.local_epochs
+        if policy.write_set_sovereignty:
+            # WS-1: server-supplied probe pairs and probes-only instructions are
+            # advisory-for-display; they never enter the training path.
+            probe_pair_ids = None
+            probes_only = False
+            # WS-4: client-owned counter; refuse a replayed round index.
+            ctr = policy.next_counter(uid, round_idx)
+            if ctr is None:
+                zero = {k: torch.zeros_like(v).to(device)
+                        for k, v in global_shared.items()}
+                return zero, user_emb_init.detach().clone()
+            from .pact.prf import PactRng
+            pact_rng = PactRng(policy.secret(uid), ctr)
+
     if opt_name == "adam":
-        opt = torch.optim.Adam(model.parameters(), lr=cfg["lr"], weight_decay=wd)
+        opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     else:
-        opt = torch.optim.SGD(model.parameters(), lr=cfg["lr"], weight_decay=wd)
+        opt = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=wd)
     rng = np.random.default_rng(seed=(uid + 1) * 1_000_003 + round_idx)
 
     n_samples = 0
     loss_sum = 0.0
-    probes_only = bool(cfg.get("attack_probes_only", False))
-    for _ in range(cfg["local_epochs"]):
-        triples = _build_triples(uid, train_items, n_real_items, probe_pair_ids,
-                                 reps_per_pair, rng, probes_only=probes_only)
+    for _ in range(local_epochs):
+        if pact_rng is not None:
+            triples = _build_triples_pact(uid, train_items, n_real_items,
+                                          pact_rng, policy)
+        else:
+            triples = _build_triples(uid, train_items, n_real_items, probe_pair_ids,
+                                     reps_per_pair, rng, probes_only=probes_only)
         if triples.shape[0] == 0:
             continue
         t = torch.from_numpy(triples).to(device)

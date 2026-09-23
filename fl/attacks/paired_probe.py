@@ -58,8 +58,22 @@ class PairedProbeAttack(AttackBase):
             else:
                 reps = int(cfg["reps_per_pair"]["ncf"])
 
-            G = trip.attack(attacked_uids, allocator, pair_ids, reps_per_pair=reps)
+            policy = getattr(self, "policy", None)
+            G = trip.attack(attacked_uids, allocator, pair_ids,
+                            reps_per_pair=reps, policy=policy)
             A = allocator.build_A()
+            if (policy is not None and getattr(policy, "block_closed", False)
+                    and getattr(policy, "partition", None) is not None):
+                # Under BC the server can only address whole blocks, so the
+                # operator it actually realises is A.Pi.Pi^T (columns constant
+                # within a block). Give the ATTACK the correct operator -- the
+                # partition is public, so this is the strongest solver the
+                # server can mount, not a handicap.
+                from ..pact.blocks import pooling_matrix
+                import numpy as _np
+                Pi = pooling_matrix(range(len(attacked_uids)), policy.partition.assign)
+                A = A @ Pi @ Pi.T
+                A = _np.minimum(A, 1.0).astype(_np.float32)
 
             self._state["G"] = G
             self._state["A"] = A
@@ -79,5 +93,7 @@ class PairedProbeAttack(AttackBase):
                     lam=float(self.cfg["ncf"]["ridge_lambda"]),
                 )
             else:
-                U_hat = solve_mf_lgcn(G, A)
+                U_hat = solve_mf_lgcn(
+                    G, A, ridge=float(self.cfg.get('solver_ridge', 1e-6)),
+                )
         return U_hat

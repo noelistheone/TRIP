@@ -34,6 +34,9 @@ sys.path.insert(0, str(ROOT))
 
 from fl.data import load_dataset
 from fl.eval import (
+    _load_warmup,
+    _save_warmup,
+    _warmup_cache_path,
     _build_attack,
     _cos_per_row,
     _evaluate_recovery,
@@ -105,8 +108,14 @@ def run_one(ds: str, mdl: str, base_cfg: dict, device, out_dir: Path,
     print(f"[{ds}/{mdl}] warmup {n_warmup} rounds, opt={warm_cfg['optimizer']}, "
           f"lr={warm_cfg['lr']}")
     t_warm = time.time()
-    _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
-    warm_time = time.time() - t_warm
+    _cache = _warmup_cache_path(ds, mdl, base_cfg, warm_cfg, n_warmup, bundle)
+    _hit = _load_warmup(_cache, model, server, device)
+    if _hit is not None:
+        warm_time = _hit
+    else:
+        _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
+        warm_time = time.time() - t_warm
+        _save_warmup(_cache, model, server, warm_time)
     print(f"[{ds}/{mdl}] warmup done in {warm_time:.1f}s")
 
     post_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
@@ -133,6 +142,7 @@ def run_one(ds: str, mdl: str, base_cfg: dict, device, out_dir: Path,
                     "enabled": True,
                     "aggregate_only": True,
                     "noise_std": float(noise_std),
+                    "baseline_mode": base_cfg.get("he", {}).get("baseline_mode", "zero"),
                 }
                 a_model = make_model(
                     mdl, bundle.n_users, bundle.n_items, d, base_cfg
@@ -152,7 +162,9 @@ def run_one(ds: str, mdl: str, base_cfg: dict, device, out_dir: Path,
                 U_hat = attack.solve(a_server, bundle, attacked_uids)
                 eval_mask = getattr(attack, "eval_mask", None)
                 metrics = _evaluate_recovery(
-                    a_model, bundle, attacked_uids, U_hat, U_true, eval_mask
+                    a_model, bundle, attacked_uids, U_hat, U_true, eval_mask,
+                    use_true_neighbors=bool(base_cfg.get(
+                        "eval_lightgcn_use_true_neighbors", False)),
                 )
                 summary = {
                     "dataset": ds,
@@ -194,12 +206,18 @@ def main():
     ap.add_argument("--datasets", nargs="+", default=DATASETS)
     ap.add_argument("--models", nargs="+", default=MODELS)
     ap.add_argument("--gpu", type=int, default=None)
+    ap.add_argument("--baseline-mode", choices=["zero", "aggregate"], default="zero",
+                    help="How per-client baselines are handled under HE. "
+                         "'zero' asserts they cannot run (definitional, legacy); "
+                         "'aggregate' hands them the FedAvg aggregate so their "
+                         "failure is measured rather than assumed.")
     ap.add_argument("--no-skip", action="store_true",
                     help="Re-run cells even if output JSON already exists.")
     args = ap.parse_args()
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
+    cfg.setdefault("he", {})["baseline_mode"] = args.baseline_mode
 
     device = pick_gpu(default=args.gpu)
     print(f"device = {device}")

@@ -46,6 +46,9 @@ sys.path.insert(0, str(ROOT))
 
 from fl.data import load_dataset
 from fl.eval import (
+    _load_warmup,
+    _save_warmup,
+    _warmup_cache_path,
     _build_attack,
     _cos_per_row,
     _make_attack_cfg,
@@ -193,8 +196,14 @@ def run_dataset_model(ds: str, mdl: str, base_cfg: dict, device,
     print(f"[{ds}/{mdl}] centralized warmup {n_warmup} rounds, "
           f"opt={warm_cfg['optimizer']}, lr={warm_cfg['lr']}")
     t_warm = time.time()
-    _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
-    warm_time = time.time() - t_warm
+    _cache = _warmup_cache_path(ds, mdl, base_cfg, warm_cfg, n_warmup, bundle)
+    _hit = _load_warmup(_cache, model, server, device)
+    if _hit is not None:
+        warm_time = _hit
+    else:
+        _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
+        warm_time = time.time() - t_warm
+        _save_warmup(_cache, model, server, warm_time)
     print(f"[{ds}/{mdl}] centralized warmup done in {warm_time:.1f}s")
 
     # Snapshot post-warmup state — every noise level reuses this clean checkpoint.

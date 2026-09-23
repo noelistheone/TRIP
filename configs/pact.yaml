@@ -1,0 +1,30 @@
+# PACT defense, layered on configs/default.yaml. Only the `pact:` block is new;
+# every other knob is inherited so the comparison is controlled.
+pact:
+  enabled: true
+  write_set:
+    sovereignty: true       # WS-1/2: client owns positives AND negatives
+    pin_recipe: true        # WS-3: ignore server optimizer / epoch overrides
+    nu: 1                   # negatives per positive (the honest sampler's ratio)
+    client_counter: true    # WS-4: refuse replayed round indices
+  block:
+    t: 16                   # anonymity parameter; rank(A.Pi) <= ceil(N/t)
+    sticky: true
+    E_max: 1                # Prop. 7: two partitions permit exact identification
+    stratify: true          # bound c-heterogeneity inside a block
+    beacon_seed: pact-v1
+  schedule:
+    block_closed: true      # BC-2: participant sets are unions of whole blocks
+  mask:
+    enabled: true           # BC-3: pairwise masks, exact cancellation over Z_q
+    scale_bits: 30
+    dropout_threshold: null # deliberately absent: survivor-set differencing
+  binding:
+    enabled: true
+    catalog_log: true
+    theta_ratio_band: [0.5, 2.0]
+    catalog_growth_max: 0.02
+  sentry:
+    enabled: true
+    alpha: 0.05
+    mode: report

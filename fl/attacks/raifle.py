@@ -106,7 +106,16 @@ class RaifleAttack(AttackBase):
                             loss = ((pred - obs) ** 2).sum()
                             loss.backward()
                             opt.step()
-                        loss_val = float(loss.detach())
+                        # Re-evaluate AFTER the last step: `loss` above is the
+                        # objective at the previous iterate, so comparing it
+                        # against the post-step `u` selected restarts on a
+                        # stale score and handicapped the baseline.
+                        # NOTE: no torch.no_grad() here -- simulate_delta for NCF
+                        # calls torch.autograd.grad internally, which needs grad
+                        # mode enabled. We just discard the graph via detach().
+                        loss_val = float(((simulate_delta(
+                            u, uid, train_items, server, round_idx) - obs) ** 2
+                        ).sum().detach())
                         if loss_val < best_loss:
                             best_loss = loss_val
                             best_u = u.detach().cpu().numpy()

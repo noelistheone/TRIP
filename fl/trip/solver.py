@@ -31,13 +31,21 @@ def _pinv_solve(A: np.ndarray, G: np.ndarray, ridge: float = 1e-6) -> np.ndarray
     return U
 
 
-def solve_mf_lgcn(G: np.ndarray, A: np.ndarray) -> np.ndarray:
-    """Returns U_hat ∈ ℝ^(N, d). Each row L2-normalized."""
+def solve_mf_lgcn(G: np.ndarray, A: np.ndarray, ridge: float = 1e-6) -> np.ndarray:
+    """Returns U_hat ∈ ℝ^(N, d). Each row L2-normalized.
+
+    `ridge` is the Tikhonov parameter of (AᵀA + ridge·I)⁻¹Aᵀ. It is NOT a mere
+    numerical guard: once the aggregate carries noise, the optimal ridge grows
+    with the noise level, and a window with a large ‖A⁺‖ (i.e. coprime to N)
+    needs a larger ridge than a rank-deficient one. Leaving it fixed at 1e-6
+    conflates "the full-rank design is worse under noise" with "the full-rank
+    design was under-regularised".
+    """
     if G.ndim == 3:
         # (T, K, d) → (T·K, d)
         T, K, d = G.shape
         G = G.reshape(T * K, d)
-    U = _pinv_solve(A.astype(np.float64), G.astype(np.float64), ridge=1e-6).astype(np.float32)
+    U = _pinv_solve(A.astype(np.float64), G.astype(np.float64), ridge=ridge).astype(np.float32)
     norms = np.linalg.norm(U, axis=-1, keepdims=True) + 1e-12
     return U / norms
 

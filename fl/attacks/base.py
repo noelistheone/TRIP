@@ -33,6 +33,7 @@ class AttackBase(ABC):
 
     def __init__(self, cfg: dict):
         self.cfg = cfg
+        self.policy = None
         self.timing: Dict[str, float] = {"prepare_sec": 0.0, "solve_sec": 0.0}
         # Attacks may store intermediate state (observations, probe pairs, etc.)
         self._state: Dict[str, object] = {}

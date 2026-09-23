@@ -71,8 +71,27 @@ def _observation_round(server, bundle, attacked_uids: List[int], cfg: dict) -> D
         # the same effect as "the attack cannot run", quantified into a number.
         he_cfg = cfg.get("he", {})
         if he_cfg.get("aggregate_only", False):
-            for uid in observations:
-                observations[uid] = torch.zeros_like(observations[uid])
+            mode = str(he_cfg.get("baseline_mode", "zero")).lower()
+            if mode == "aggregate":
+                # FAIR ADAPTATION. Under HE the server does still receive one
+                # signal: the FedAvg aggregate. A per-client inversion attack
+                # adapted to that regime runs its solver against the aggregate
+                # for every target. This measures what such an adaptation can
+                # actually achieve instead of asserting that it achieves
+                # nothing -- the resulting cosine is an empirical quantity.
+                if observations:
+                    agg = None
+                    for v in observations.values():
+                        agg = v.clone() if agg is None else agg.add_(v)
+                    agg = agg / max(len(observations), 1)
+                    for uid in observations:
+                        observations[uid] = agg.clone()
+            else:
+                # Legacy behaviour: model "the attack cannot run" by zeroing the
+                # per-client signal. Numbers produced this way are definitional,
+                # NOT measured -- report them as n/a, never as a cosine.
+                for uid in observations:
+                    observations[uid] = torch.zeros_like(observations[uid])
         return observations
     finally:
         server.restore(snap)

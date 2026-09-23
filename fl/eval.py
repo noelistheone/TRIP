@@ -15,7 +15,9 @@ Multi-attack:  run_experiment_multi_attack(...) → dict[attack_name → summary
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -65,18 +67,32 @@ def _ranking_metrics(scores: np.ndarray, gt_items: List[int],
 
 def _score_user_against_items(model: FLModel, u_query: torch.Tensor,
                               n_items_original: int,
-                              train_pos: List[int]) -> np.ndarray:
+                              train_pos: List[int],
+                              use_true_neighbors: bool = False) -> np.ndarray:
     """Score a candidate user vector against the original (non-probe) item catalog.
     Train items are masked to -inf. Returns ndarray of length n_items_original."""
     device = next(model.parameters()).device
     saved = model.get_user_row()
     try:
         model.set_user_row(u_query.to(device))
-        # LightGCN doesn't use neighbors at eval (the recovered query already
-        # represents the user; the propagation is for graph-aware scoring).
         if isinstance(model, LightGCNModel):
-            # Use train_pos as neighbors so the propagation matches the true model.
-            model.set_neighbors(train_pos)
+            # Sec. III-D defines the LightGCN recovery target as the PROPAGATED
+            # representation u_tilde, which is what the probe rows expose. So the
+            # recovered vector must be scored directly (V @ u_hat); re-propagating
+            # it would both double-smooth it and, far worse, feed the scorer the
+            # victim's true interaction list -- the private data the attack is
+            # supposed to be inferring.
+            #
+            # Measured consequence of the old behaviour (LastFM/LightGCN): an
+            # attack with cos = -0.0115 scored recall@10 = 0.1257 against a
+            # true-u reference of 0.1296, i.e. the ranking metric was almost
+            # independent of the recovered embedding. Set
+            # `eval_lightgcn_use_true_neighbors: true` to reproduce it as an
+            # explicit upper bound.
+            if use_true_neighbors:
+                model.set_neighbors(train_pos)
+            else:
+                model.set_neighbors([])
         ids = torch.arange(n_items_original, device=device)
         with torch.no_grad():
             scores = model.score_all(ids).detach().cpu().numpy()
@@ -123,8 +139,12 @@ def _make_warmup_cfg(cfg: dict, dataset: str, model_name: str) -> dict:
 
 def _make_attack_cfg(cfg: dict, dataset: str, model_name: str) -> dict:
     out = copy.deepcopy(cfg)
-    out["optimizer"] = "sgd"
-    out["weight_decay"] = 0.0
+    # The attack phase normally FORCES plain SGD with wd=0 and probes-only
+    # mini-batches. Both are capabilities an honest-but-curious server does not
+    # have, so they are overridable to let us measure the attack on a ladder of
+    # progressively weaker adversaries (see the threat-model ablation).
+    out["optimizer"] = str(cfg.get("attack_optimizer_override", "sgd")).lower()
+    out["weight_decay"] = float(cfg.get("attack_weight_decay_override", 0.0))
     out["lr"] = float(cfg.get("lr", 0.005))
     # ATTACK PHASE: local_epochs MUST be small (default 1) so the user
     # embedding stays close to u^(0) during probe injection. With dense
@@ -133,7 +153,7 @@ def _make_attack_cfg(cfg: dict, dataset: str, model_name: str) -> dict:
     # steps per round → user drifts ~2× initial norm → probe-row signal
     # decoheres → cos collapses to ~0.3. Cap to 1 universally.
     out["local_epochs"] = int(cfg.get("attack_local_epochs", 1))
-    out["attack_probes_only"] = True  # TRIP attack rounds: skip real BPR
+    out["attack_probes_only"] = bool(cfg.get("attack_probes_only", True))
     out["clients_per_round"] = int(cfg.get("clients_per_round", 128))
     return out
 
@@ -182,24 +202,102 @@ def _build_attack(name: str, cfg: dict):
 
 
 # --------------------------------------------------------------------
+# Warmup checkpoint cache
+# --------------------------------------------------------------------
+# Warmup is by far the most expensive phase and is completely independent of
+# the attack-phase geometry (W, K, T_factor, ridge, probe construction) and of
+# any defense configuration. Caching the post-warmup state keyed on the
+# warmup-relevant configuration lets a whole sweep over attack/defense knobs
+# reuse one training run. Set FL_WARMUP_CACHE="" to disable.
+_WARMUP_CACHE_KEYS = (
+    "d", "seed", "N_attack", "local_batch", "bpr_neg_ratio",
+    "attacked_target_triples", "attacked_oversample_min",
+    "attacked_oversample_max", "attacked_oversample",
+)
+
+
+def _warmup_cache_path(dataset: str, model_name: str, cfg: dict, warm_cfg: dict,
+                       n_warmup: int, bundle: DatasetBundle) -> Optional[Path]:
+    root = os.environ.get("FL_WARMUP_CACHE", "/data/lawrence/TRIP/warmup_cache")
+    if not root:
+        return None
+    key = {
+        "dataset": dataset, "model": model_name, "n_warmup": n_warmup,
+        "n_users": bundle.n_users, "n_items": bundle.n_items,
+        "n_inter": sum(len(v) for v in bundle.train_pos.values()),
+        "warm": {k: warm_cfg.get(k) for k in
+                 ("optimizer", "lr", "weight_decay", "local_epochs", "clients_per_round")},
+        "cfg": {k: cfg.get(k) for k in _WARMUP_CACHE_KEYS},
+        "model_cfg": {k: cfg.get(k) for k in ("lightgcn", "ncf")},
+    }
+    h = hashlib.sha1(json.dumps(key, sort_keys=True, default=str).encode()).hexdigest()[:16]
+    return Path(root) / f"{dataset}_{model_name}_{h}.pt"
+
+
+def _load_warmup(path: Optional[Path], model: FLModel, server: TRIPServer,
+                 device: torch.device) -> Optional[float]:
+    """Returns the cached warmup wall-clock on a hit, None on a miss."""
+    if path is None or not path.exists():
+        return None
+    try:
+        blob = torch.load(path, map_location="cpu", weights_only=False)
+    except Exception as e:
+        print(f"[warmup-cache] unreadable ({e}); retraining")
+        return None
+    model.load_state_dict({k: v.to(device) for k, v in blob["state"].items()})
+    server.user_states = {int(u): v.to(device) for u, v in blob["users"].items()}
+    server.round = int(blob["round"])
+    print(f"[warmup-cache] HIT  {path.name}  (saved {blob.get('warm_time', 0):.0f}s)")
+    return float(blob.get("warm_time", 0.0))
+
+
+def _save_warmup(path: Optional[Path], model: FLModel, server: TRIPServer,
+                 warm_time: float) -> None:
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    torch.save({
+        "state": {k: v.detach().cpu().clone() for k, v in model.state_dict().items()},
+        "users": {int(u): v.detach().cpu().clone() for u, v in server.user_states.items()},
+        "round": server.round, "warm_time": warm_time,
+    }, tmp)
+    tmp.replace(path)
+    print(f"[warmup-cache] SAVE {path.name}")
+
+
+# --------------------------------------------------------------------
 # Metric assembly
 # --------------------------------------------------------------------
 def _evaluate_recovery(model: FLModel, bundle: DatasetBundle,
                        attacked_uids: List[int],
                        U_hat: np.ndarray, U_true: np.ndarray,
-                       eval_mask: Optional[np.ndarray]) -> Dict:
+                       eval_mask: Optional[np.ndarray],
+                       use_true_neighbors: bool = False) -> Dict:
     N = U_hat.shape[0]
     cos = _cos_per_row(U_hat, U_true)
     if eval_mask is not None:
         cos_eval = cos[eval_mask]
     else:
         cos_eval = cos
+    # Attack-free floor: what a server gets by predicting the POPULATION MEAN
+    # embedding for every user, i.e. with no attack at all. This floor is large
+    # and strongly dataset-dependent (0.24 on LastFM, 0.72 on MovieLens), so a
+    # raw cosine is not interpretable without it. `gain_norm` rescales the
+    # metric onto [0, 1] between "no attack" and "perfect recovery".
+    U_bar = U_true.mean(axis=0, keepdims=True)
+    cos_triv = _cos_per_row(np.repeat(U_bar, U_true.shape[0], axis=0), U_true)
+    cos_triv_eval = cos_triv[eval_mask] if eval_mask is not None else cos_triv
+    triv = float(np.mean(cos_triv_eval)) if cos_triv_eval.size else 0.0
+    cm = float(np.mean(cos_eval)) if cos_eval.size else 0.0
     cos_summary = {
-        "cos_mean": float(np.mean(cos_eval)) if cos_eval.size else 0.0,
+        "cos_mean": cm,
         "cos_median": float(np.median(cos_eval)) if cos_eval.size else 0.0,
         "cos_std": float(np.std(cos_eval)) if cos_eval.size else 0.0,
         "n_eval": int(cos_eval.size),
         "cos_per_user_mean": float(np.mean(cos)),
+        "cos_trivial_floor": triv,
+        "gain_norm": float((cm - triv) / (1.0 - triv)) if triv < 1.0 else 0.0,
     }
 
     ks = [10, 20, 50]
@@ -216,14 +314,18 @@ def _evaluate_recovery(model: FLModel, bundle: DatasetBundle,
         u_query = torch.tensor(U_hat[int(i)], dtype=torch.float32)
         scores = _score_user_against_items(
             model, u_query, n_items_orig, bundle.train_pos.get(uid, []),
+            use_true_neighbors=use_true_neighbors,
         )
         m = _ranking_metrics(scores, gt, ks)
         for key, v in m.items():
             rank_per_user[key].append(float(v))
         # Reference: ranking with true u (upper bound for this warmup quality)
+        # Reference = the recommendations the USER would generate for themselves,
+        # which legitimately use their own interaction graph.
         u_true_q = torch.tensor(U_true[int(i)], dtype=torch.float32)
         scores_t = _score_user_against_items(
             model, u_true_q, n_items_orig, bundle.train_pos.get(uid, []),
+            use_true_neighbors=True,
         )
         m_t = _ranking_metrics(scores_t, gt, ks)
         for key, v in m_t.items():
@@ -263,10 +365,19 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
     warm_cfg = _make_warmup_cfg(cfg, dataset, model_name)
     server.cfg = warm_cfg
     print(f"[{dataset}/{model_name}] warmup {n_warmup} rounds, opt={warm_cfg['optimizer']}, lr={warm_cfg['lr']}")
+    cache_path = _warmup_cache_path(dataset, model_name, cfg, warm_cfg, n_warmup, bundle)
     t_warm = time.time()
-    _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
-    warm_time = time.time() - t_warm
-    print(f"[{dataset}/{model_name}] warmup done in {warm_time:.1f}s")
+    _cached = _load_warmup(cache_path, model, server, device)
+    if _cached is not None:
+        warm_time = _cached
+        cached_warmup = True
+    else:
+        _run_warmup(server, n_warmup, attacked_uids, int(warm_cfg["clients_per_round"]))
+        warm_time = time.time() - t_warm
+        cached_warmup = False
+        _save_warmup(cache_path, model, server, warm_time)
+    print(f"[{dataset}/{model_name}] warmup done in {warm_time:.1f}s"
+          f"{' (cached)' if cached_warmup else ''}")
 
     # Snapshot post-warmup model state + user states (so we can rebuild a
     # fresh model per attack — paired_probe extends the catalog, raifle
@@ -279,6 +390,27 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
     U_true = np.stack([
         post_users[uid].numpy() for uid in attacked_uids
     ]).astype(np.float32)
+
+    # ---- PACT ----------------------------------------------------------
+    # Built from the ORIGINAL cfg and the HONEST warm-up recipe, and threaded to
+    # the client as a separate argument. It deliberately does NOT live in the
+    # dict `_make_attack_cfg` deep-copies: otherwise the simulated attacker
+    # would rewrite the defense's own optimizer / probes-only settings and every
+    # "PACT stops TRIP" number would be vacuous.
+    from .pact import policy_from_cfg
+    from .pact.blocks import StickyPartition, activity_bucket
+    policy = policy_from_cfg(cfg, warm_cfg)
+    if policy is not None:
+        strata = None
+        if policy.stratify:
+            strata = {i: activity_bucket(len(bundle.train_pos.get(u, [])))
+                      for i, u in enumerate(attacked_uids)}
+        policy.partition = StickyPartition.build(
+            list(range(len(attacked_uids))), policy.t, policy.beacon, strata)
+        print(f"[pact] t={policy.t} blocks={len(policy.partition.members)} "
+              f"(ceil(N/t)={-(-len(attacked_uids)//policy.t)}) "
+              f"ws={policy.write_set_sovereignty} bc={policy.block_closed} "
+              f"recipe={policy.optimizer}/wd={policy.weight_decay}")
 
     summaries: Dict[str, Dict] = {}
     attack_cfg_base = _make_attack_cfg(cfg, dataset, model_name)
@@ -293,6 +425,7 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
         a_server.round = post_round
 
         attack = _build_attack(attack_name, attack_cfg_base)
+        attack.policy = policy
         try:
             attack.prepare(a_server, bundle, attacked_uids)
             U_hat = attack.solve(a_server, bundle, attacked_uids)
@@ -306,7 +439,10 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
 
         # Metrics
         eval_mask = getattr(attack, "eval_mask", None)
-        metrics = _evaluate_recovery(a_model, bundle, attacked_uids, U_hat, U_true, eval_mask)
+        metrics = _evaluate_recovery(
+            a_model, bundle, attacked_uids, U_hat, U_true, eval_mask,
+            use_true_neighbors=bool(cfg.get('eval_lightgcn_use_true_neighbors', False)),
+        )
         summary = {
             "dataset": dataset,
             "model": model_name,
@@ -325,12 +461,22 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
         json_path = out_dir / f"{dataset}_{model_name}_{attack_name}.json"
         json_path.write_text(json.dumps(summary, indent=2))
         npz_path = out_dir / f"{dataset}_{model_name}_{attack_name}.npz"
+        # Persist the linear system (G, A) too: the README documents it, and it
+        # lets any solver/ridge/rank experiment be replayed offline in seconds
+        # instead of re-running warmup + attack on a GPU.
+        extra = {}
+        _st = getattr(attack, "_state", {})
+        if isinstance(_st.get("G"), np.ndarray):
+            extra["G"] = _st["G"].astype(np.float32)
+        if isinstance(_st.get("A"), np.ndarray):
+            extra["A"] = _st["A"].astype(np.int8)
         np.savez_compressed(
             npz_path,
             U_hat=U_hat, true_U=U_true,
             cos=_cos_per_row(U_hat, U_true),
             attacked_uids=np.asarray(attacked_uids, dtype=np.int64),
             eval_mask=(eval_mask if eval_mask is not None else np.ones(len(attacked_uids), dtype=bool)),
+            **extra,
         )
         print(f"[{dataset}/{model_name}/{attack_name}] cos_mean={summary['cos']['cos_mean']:.4f} "
               f"recall@10={summary['ranking']['recall@10']:.4f} "
@@ -498,6 +644,10 @@ def render_single(summary: Dict) -> str:
     lines.append(f"- cos_median : {cs['cos_median']:.4f}")
     lines.append(f"- cos_std    : {cs['cos_std']:.4f}")
     lines.append(f"- n_eval     : {cs['n_eval']}")
+    if "cos_trivial_floor" in cs:
+        lines.append(f"- trivial floor (mean-embedding, no attack): {cs['cos_trivial_floor']:.4f}")
+        lines.append(f"- gain_norm  : {cs['gain_norm']:.4f}   "
+                     f"[(cos - floor) / (1 - floor)]")
     lines.append("")
     lines.append("## Ranking metrics (over recovered embedding queries)")
     rk = summary["ranking"]

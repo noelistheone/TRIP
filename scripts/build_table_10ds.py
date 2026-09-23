@@ -34,17 +34,19 @@ MODELS = ["mf", "lightgcn", "ncf"]
 MODEL_LABEL = {"mf": "MF", "lightgcn": "LightGCN", "ncf": "NCF"}
 
 
-def load_runs():
-    """Override priority (later wins):
-        run4 < run6 < run4_ncf_fix < run4_delicious_fix
-        < run6_amazon_beauty_timing (clean TRIP timing without GPU contention)
-        < run6_amazon_book_fix (amazon-book/mf with reduced warmup).
+DEFAULT_RUN_DIRS = ["results/main"]
+
+
+def load_runs(dirs=None):
+    """Load every per-run JSON from the given result directories.
+
+    Later directories override earlier ones for the same (dataset, model, attack).
+    Prefer a SINGLE directory produced by one sweep with one configuration: a
+    table stitched together from several partially-reconfigured runs cannot be
+    described as a controlled comparison.
     """
     runs = {}
-    for d in ["results/run4", "results/run6", "results/run4_ncf_fix",
-              "results/run4_delicious_fix",
-              "results/run6_amazon_beauty_timing",
-              "results/run6_amazon_book_fix"]:
+    for d in (dirs or DEFAULT_RUN_DIRS):
         p_dir = Path(d)
         if not p_dir.exists():
             continue
@@ -160,14 +162,25 @@ def build_table(runs):
 
 
 def main():
-    runs = load_runs()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--runs", nargs="+", default=DEFAULT_RUN_DIRS,
+                    help="Result directories (later override earlier).")
+    ap.add_argument("--tex", default="paper/conference_101719.tex",
+                    help="LaTeX file carrying the AUTO-GENERATED RUN10 TABLE markers. "
+                         "Use --tex '' to print the table instead of splicing it.")
+    args = ap.parse_args()
+    runs = load_runs(args.runs)
     cells_total = len(DATASETS) * len(MODELS) * len(ATTACKS)
     cells_have = sum(1 for ds in DATASETS for mdl in MODELS for a in ATTACKS
                      if (ds, mdl, a) in runs)
     print(f"Coverage: {cells_have}/{cells_total} runs available")
     tex = build_table(runs)
 
-    main_tex = Path("draft/conference_101719.tex")
+    if not args.tex:
+        print(tex)
+        return
+    main_tex = Path(args.tex)
     src = main_tex.read_text()
     start = "% AUTO-GENERATED RUN10 TABLE START"
     end = "% AUTO-GENERATED RUN10 TABLE END"

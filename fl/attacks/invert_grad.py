@@ -70,6 +70,8 @@ class InvertGradientsAttack(AttackBase):
                 opt = torch.optim.Adam([u], lr=lr)
 
                 t_user = time.time()
+                best_loss = float("inf")
+                best_u = u.detach().clone()
                 for step in range(n_iter):
                     opt.zero_grad()
                     pred = simulate_delta(u, uid, train_items, server, round_idx)
@@ -77,13 +79,20 @@ class InvertGradientsAttack(AttackBase):
                     pred_norm = pred_flat.norm().clamp_min(1e-12)
                     # 1 − cos: magnitude-invariant loss from Geiping §3.1
                     loss = 1.0 - (pred_flat @ obs_flat) / (pred_norm * obs_norm)
+                    # Signed-gradient descent takes fixed-size steps, so the
+                    # iterate oscillates around the optimum and the LAST one is
+                    # systematically worse than the best seen. Track the best.
+                    lv = float(loss.detach())
+                    if lv < best_loss:
+                        best_loss = lv
+                        best_u = u.detach().clone()
                     loss.backward()
                     if signed_grad:
                         with torch.no_grad():
                             if u.grad is not None:
                                 u.grad = u.grad.sign()
                     opt.step()
-                u_np = u.detach().cpu().numpy()
+                u_np = best_u.cpu().numpy()
                 u_np = u_np / (np.linalg.norm(u_np) + 1e-12)
                 U_hat[i] = u_np
                 per_user_times.append(time.time() - t_user)

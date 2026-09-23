@@ -84,7 +84,8 @@ class TRIPServer:
     def run_round(self, sampled: List[int],
                   probe_assign: Optional[Dict[int, List[Tuple[int, int]]]] = None,
                   reps_per_pair: int = 16,
-                  apply_he_noise: Optional[bool] = None) -> Dict[str, torch.Tensor]:
+                  apply_he_noise: Optional[bool] = None,
+                  policy=None) -> Dict[str, torch.Tensor]:
         probe_assign = probe_assign or {}
         global_shared = {k: self.model.state_dict()[k].detach().clone()
                           for k in self.model.shared_keys()}
@@ -100,7 +101,7 @@ class TRIPServer:
             delta_dict, new_u = local_train(
                 self.model, global_shared, user_init, uid, train_items, n_real_items,
                 self.cfg, probe_pair_ids=probe_pairs, reps_per_pair=reps_per_pair,
-                round_idx=self.round,
+                round_idx=self.round, policy=policy,
             )
             if accum is None:
                 accum = {k: v.detach().clone() for k, v in delta_dict.items()}
@@ -284,7 +285,7 @@ class TRIPServer:
     # ------------------------------------------------------------------
     def attack(self, attacked_uids: List[int], allocator,
                pair_ids: List[Tuple[int, int]], reps_per_pair: int,
-               progress: bool = True) -> np.ndarray:
+               progress: bool = True, policy=None) -> np.ndarray:
         K = allocator.K
         T = allocator.T
         d = self.cfg["d"]
@@ -305,9 +306,26 @@ class TRIPServer:
                     from .probes import damp_ncf_mlp
                     damp_ncf_mlp(self.model, factor=0.1)
                 local_assign = allocator.assignments_for_round(t)
+                # PACT BC-2: a block participates all-or-none, so the server can
+                # only address whole blocks. The exposure operator then factors
+                # through the pooling matrix and rank(A.Pi) <= ceil(N/t)
+                # (Theorem 2) -- the dual of the attack's own rank analysis.
+                if (policy is not None and getattr(policy, "block_closed", False)
+                        and getattr(policy, "partition", None) is not None):
+                    part = policy.partition
+                    by_block: Dict[int, set] = {}
+                    for local_uid, ks in local_assign.items():
+                        b = part.block_of(local_uid)
+                        by_block.setdefault(b, set()).update(ks)
+                    local_assign = {}
+                    for b, ks in by_block.items():
+                        for member in part.members[b]:
+                            local_assign[member] = sorted(ks)
                 forced: List[int] = []
                 probe_assign: Dict[int, List[Tuple[int, int]]] = {}
                 for local_uid, ks in local_assign.items():
+                    if local_uid >= len(attacked_uids):
+                        continue
                     real_uid = attacked_uids[local_uid]
                     pair_list = [pair_ids[k] for k in ks]
                     probe_assign[real_uid] = pair_list
@@ -319,7 +337,7 @@ class TRIPServer:
                 # compute on heavy-user datasets like amazon-book.
                 sampled = list(set(forced))
                 delta = self.run_round(sampled, probe_assign=probe_assign,
-                                       reps_per_pair=reps_per_pair)
+                                       reps_per_pair=reps_per_pair, policy=policy)
                 item_delta = delta["item_emb.weight"]
                 n_sampled = max(len(sampled), 1)
                 for k in range(K):
