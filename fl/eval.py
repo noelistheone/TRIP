@@ -228,7 +228,9 @@ def _warmup_cache_path(dataset: str, model_name: str, cfg: dict, warm_cfg: dict,
         "warm": {k: warm_cfg.get(k) for k in
                  ("optimizer", "lr", "weight_decay", "local_epochs", "clients_per_round")},
         "cfg": {k: cfg.get(k) for k in _WARMUP_CACHE_KEYS},
-        "model_cfg": {k: cfg.get(k) for k in ("lightgcn", "ncf")},
+        # attack-phase-only knobs (e.g. ncf.damp_factor) must not change the warm-up key
+        "model_cfg": {k: ({kk: vv for kk, vv in (cfg.get(k) or {}).items() if kk != "damp_factor"}
+                          if isinstance(cfg.get(k), dict) else cfg.get(k)) for k in ("lightgcn", "ncf")},
     }
     h = hashlib.sha1(json.dumps(key, sort_keys=True, default=str).encode()).hexdigest()[:16]
     return Path(root) / f"{dataset}_{model_name}_{h}.pt"
