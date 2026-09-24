@@ -108,6 +108,13 @@ def main():
     # (the first version measured false alarms on the calibration rounds
     # themselves, which is in-sample and meaningless)
     fresh = []
+    # evasion families, in units of the catalogue std: "scaled" = the attack's own
+    # construction at probe scale eps (base eps, pair jitter eps/10); "adaptive" =
+    # base sqrt(1-s^2), jitter s, so every probe row is marginally N(0, sigma^2)
+    EV_FAMILIES = {f"scaled:{e}": (e, 0.1 * e) for e in (1e-3, 1e-1, 1.0, 3.0, 5.0, 10.0, 20.0, 50.0)}
+    EV_FAMILIES.update({f"adaptive:{s_}": (float(np.sqrt(1 - s_ * s_)), s_) for s_ in (0.1, 0.3, 0.5, 0.6, 0.707)})
+    ev_rng = np.random.default_rng(20241019)
+    ev_round = {}
     for r in range(a.fresh_rounds):
         recv = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()
                 if not k.startswith("user_emb.")}
@@ -118,6 +125,14 @@ def main():
         server.run_round(s_, probe_assign=None, reps_per_pair=1)
         cat = model.item_emb.weight.detach().cpu().numpy()
         fresh.append(extract(benign_append(cat), cat, cur, prev_fresh, ident, len(cur), 0.0))
+        # the same round's catalogue, with probe pairs of each evasion family appended
+        # instead of honest cold-start rows (independent RNG so the benign stream is unchanged)
+        sv = float(cat.std())
+        for key, (b_sd, j_sd) in EV_FAMILIES.items():
+            base = ev_rng.normal(0.0, b_sd * sv, size=(int(cfg["K"]), d))
+            jit = ev_rng.normal(0.0, j_sd * sv, size=(int(cfg["K"]), d))
+            rows = np.concatenate([base + jit, base - jit], axis=0)
+            ev_round.setdefault(key, []).append(extract(rows, cat, cur, prev_fresh, ident, len(cur), 1.0))
         prev_last = prev_fresh
         prev_fresh = cur
     fresh = np.asarray(fresh)
@@ -205,6 +220,11 @@ def main():
                                       jitter_rel=float(s_))
                 for s_ in (0.1, 0.3, 0.5, 0.6, 0.707)}
 
+    ev_rate = {k: float(np.mean([S.flag(x[USE])[0] for x in v])) for k, v in ev_round.items()}
+    i_nn = FEATURES.index("nn_dup")
+    S_nn = Sentry(alpha=a.alpha).fit(benign[:h][:, [i_nn]], calib=benign[h:][:, [i_nn]])
+    ev_rate_nn = {k: float(np.mean([S_nn.flag(x[[i_nn]])[0] for x in v])) for k, v in ev_round.items()}
+
     print(f"\n{a.dataset}/{a.model}  calibration={len(benign)}  fresh benign={len(fresh)}  attack={len(attack)}")
     print(f"  detection (real TRIP rounds)      : {det:.3f}")
     print(f"  false alarm (FRESH benign rounds) : {fa:.3f}   (alpha={a.alpha})")
@@ -219,6 +239,7 @@ def main():
          "detection_real": det, "false_alarm_fresh": fa, "per_feature": per,
          "n_fit": h, "n_calibration": len(benign) - h, "n_fresh": len(fresh), "n_attack": len(attack),
          "evasion_scaled": ev, "evasion_adaptive": ev_adapt,
+         "evasion_rate_per_round": ev_rate, "evasion_rate_per_round_nn_only": ev_rate_nn,
          "benign_feature_median": {f: float(np.median(benign[:, FEATURES.index(f)]))
                                    for f in ("nn_dup", "growth", "mag_z")},
          "raw": {"features": FEATURES, "benign": benign.tolist(),
