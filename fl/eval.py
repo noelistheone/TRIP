@@ -471,7 +471,7 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
         if isinstance(_st.get("G"), np.ndarray):
             extra["G"] = _st["G"].astype(np.float32)
         if isinstance(_st.get("A"), np.ndarray):
-            extra["A"] = _st["A"].astype(np.int8)
+            extra["A"] = _st["A"].astype(np.float32)   # weights 1/m can be fractional
         np.savez_compressed(
             npz_path,
             U_hat=U_hat, true_U=U_true,
