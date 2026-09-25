@@ -37,6 +37,10 @@ class ClientPolicy:
     binding: bool = True
     theta_ratio_band: Tuple[float, float] = (0.5, 2.0)
     catalog_growth_max: float = 0.02
+    # v4: the checks above used to be configured but never executed. When True, every
+    # attack round is checked against the last ACCEPTED broadcast (per-tensor norm band,
+    # append-only catalogue growth cap) and aborted by the clients if either fails.
+    tb_enforce: bool = False
     # --- SENTRY ---
     sentry: bool = True
     sentry_alpha: float = 0.05
@@ -112,6 +116,7 @@ def policy_from_cfg(cfg: dict, warm_cfg: Optional[dict] = None) -> Optional[Clie
         binding=bool(bi.get("enabled", True)),
         theta_ratio_band=(float(band[0]), float(band[1])),
         catalog_growth_max=float(bi.get("catalog_growth_max", 0.02)),
+        tb_enforce=bool(bi.get("enforce", False)),
         sentry=bool(se.get("enabled", True)),
         sentry_alpha=float(se.get("alpha", 0.05)),
         sentry_mode=str(se.get("mode", "report")),

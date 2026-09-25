@@ -45,6 +45,9 @@ class InvertGradientsAttack(AttackBase):
             model_key, ig_cfg.get("n_iter", 1000)
         ))
         signed_grad = bool(ig_cfg.get("signed_grad", True))
+        # Published schedule (inversefed): x0.1 at 3/8, 5/8 and 7/8 of the budget. Off by default.
+        lr_decay = bool(ig_cfg.get("lr_decay", False))
+        milestones = [int(n_iter * f) for f in (3 / 8, 5 / 8, 7 / 8)]
 
         observations: Dict[int, torch.Tensor] = self._state["observations"]
         round_idx: int = self._state["round_idx"]
@@ -54,6 +57,7 @@ class InvertGradientsAttack(AttackBase):
 
         U_hat = np.zeros((N, d), dtype=np.float32)
         per_user_times: List[float] = []
+        best_iters: List[int] = []   # v4 budget diagnostics: step at which the best loss was seen
 
         with self._time("solve_sec"):
             for i, uid in enumerate(attacked_uids):
@@ -68,10 +72,13 @@ class InvertGradientsAttack(AttackBase):
                 torch.manual_seed((uid + 1) * 7)
                 u = (torch.randn(d, device=device) * 0.01).detach().clone().requires_grad_(True)
                 opt = torch.optim.Adam([u], lr=lr)
+                sched = (torch.optim.lr_scheduler.MultiStepLR(opt, milestones=milestones, gamma=0.1)
+                         if lr_decay else None)
 
                 t_user = time.time()
                 best_loss = float("inf")
                 best_u = u.detach().clone()
+                best_step = 0
                 for step in range(n_iter):
                     opt.zero_grad()
                     pred = simulate_delta(u, uid, train_items, server, round_idx)
@@ -86,17 +93,26 @@ class InvertGradientsAttack(AttackBase):
                     if lv < best_loss:
                         best_loss = lv
                         best_u = u.detach().clone()
+                        best_step = step
                     loss.backward()
                     if signed_grad:
                         with torch.no_grad():
                             if u.grad is not None:
                                 u.grad = u.grad.sign()
                     opt.step()
+                    if sched is not None:
+                        sched.step()
                 u_np = best_u.cpu().numpy()
                 u_np = u_np / (np.linalg.norm(u_np) + 1e-12)
                 U_hat[i] = u_np
                 per_user_times.append(time.time() - t_user)
+                best_iters.append(best_step)
 
         self.timing["per_user_solve_mean"] = float(np.mean(per_user_times)) if per_user_times else 0.0
         self.timing["per_user_solve_std"] = float(np.std(per_user_times)) if per_user_times else 0.0
+        if best_iters:
+            bi = np.asarray(best_iters, dtype=float) / max(n_iter - 1, 1)
+            self.timing["budget_n_iter"] = int(n_iter)
+            self.timing["best_step_frac_mean"] = float(bi.mean())
+            self.timing["best_in_last_10pct_frac"] = float((bi >= 0.9).mean())
         return U_hat

@@ -24,6 +24,40 @@ from ..client import local_train
 from ..models import FLModel, NCFModel
 
 
+def lgcn_layer_weights(hops: int) -> Tuple[float, float]:
+    """On a star graph LightGCN's layers alternate u, S_u, u, ...; return the
+    shares of u and of S_u in the mean over hops+1 layers ((2/3, 1/3) for 2 hops)."""
+    return (hops // 2 + 1) / (hops + 1), ((hops + 1) // 2) / (hops + 1)
+
+
+def lgcn_star_sum(lists: List[List[int]], device):
+    """CSR of per-user item lists -> (f, deg) with f(u_loc, V) = M_u^{-1/2} sum_{j in I_u} V[j]
+    for a batch of local user indices (differentiable in V); deg[u] = M_u."""
+    deg_np = np.array([len(l) for l in lists], dtype=np.int64)
+    deg = torch.from_numpy(deg_np).to(device)
+    indptr = torch.zeros(len(lists) + 1, dtype=torch.long, device=device)
+    indptr[1:] = torch.cumsum(deg, 0)
+    indices = torch.tensor([i for l in lists for i in l], dtype=torch.long, device=device)
+    inv_sqrt = torch.where(deg > 0, deg.clamp_min(1).double().rsqrt(),
+                           torch.zeros_like(deg, dtype=torch.double)).float()
+
+    def f(u_loc: torch.Tensor, V: torch.Tensor, total: Optional[int] = None) -> torch.Tensor:
+        # `total` = sum of the batch users' degrees, computed on the host by the
+        # caller; passing it as output_size keeps the kernels free of GPU syncs.
+        lens = deg[u_loc]
+        if total is None:
+            total = int(lens.sum())
+        rows = torch.repeat_interleave(torch.arange(len(u_loc), device=device), lens, output_size=total)
+        starts = torch.repeat_interleave(indptr[u_loc], lens, output_size=total)
+        offs = torch.arange(total, device=device) - torch.repeat_interleave(
+            torch.cumsum(lens, 0) - lens, lens, output_size=total)
+        S = torch.zeros(len(u_loc), V.shape[1], device=device, dtype=V.dtype)
+        S = S.index_add(0, rows, V[indices[starts + offs]])
+        return S * inv_sqrt[u_loc].unsqueeze(-1)
+    f.deg_np = deg_np
+    return f, deg
+
+
 class TRIPServer:
     def __init__(self, model: FLModel, bundle, cfg: dict, device: torch.device):
         self.model = model
@@ -160,6 +194,8 @@ class TRIPServer:
         # Use a single nn.Embedding for all train users so Adam state for
         # user_emb persists across batches.
         uid_to_local = {int(uid): i for i, uid in enumerate(train_uids)}
+        uid_lut = np.full(max(int(u) for u in train_uids) + 1, -1, dtype=np.int64)
+        uid_lut[np.asarray(train_uids, dtype=np.int64)] = np.arange(len(train_uids), dtype=np.int64)
         user_table = torch.nn.Embedding(len(train_uids), d).to(device)
         with torch.no_grad():
             for uid in train_uids:
@@ -206,11 +242,19 @@ class TRIPServer:
                   f"(target {target_triples_per_user} triples per user, "
                   f"avg items={avg_items:.1f}, epochs={total_epochs})")
 
+        if isinstance(self.model, LightGCNModel):
+            # per-batch neighbour sum S_u over each train user's real items
+            lists = [[int(i) for i in self.bundle.train_pos.get(int(uid), []) if 0 <= int(i) < n_real_items]
+                     for uid in train_uids]
+            lgcn_nbr_sum, lgcn_deg = lgcn_star_sum(lists, device)
+            lgcn_a, lgcn_b = lgcn_layer_weights(int(getattr(self.model, "hops", 2)))
+
         # bpr_neg_ratio: number of negative samples per positive (default 1).
         # Bumping to 5+ is useful on extremely sparse catalogs (e.g. delicious
         # 69k items × ~1.2 user-visits per item) where MF/NCF item embeddings
         # can't develop discriminative direction with 1:1 sampling alone.
         neg_ratio = int(self.cfg.get("bpr_neg_ratio", 1))
+        batch_l2 = float(self.cfg.get("warmup_batch_l2", 0.0) or 0.0)   # v4 E2b, off by default
 
         # Build a shuffled big triple buffer per epoch
         for ep in iterator:
@@ -232,12 +276,12 @@ class TRIPServer:
             all_t = np.concatenate(all_triples, axis=0)
             rng.shuffle(all_t)
             T = torch.from_numpy(all_t).to(device)
+            # local user index of every triple, mapped once per epoch on the host
+            u_all_np = uid_lut[all_t[:, 0]]
+            U_all = torch.from_numpy(u_all_np).to(device)
             for start in range(0, T.shape[0], batch):
                 mb = T[start:start + batch]
-                u_local = torch.tensor(
-                    [uid_to_local[int(x)] for x in mb[:, 0].tolist()],
-                    dtype=torch.long, device=device,
-                )
+                u_local = U_all[start:start + batch]
                 u_vec = user_table(u_local)               # (B, d)
                 pos_ids = mb[:, 1]
                 neg_ids = mb[:, 2]
@@ -252,24 +296,29 @@ class TRIPServer:
                     pos_s = _ncf_score(u_vec, v_pos)
                     neg_s = _ncf_score(u_vec, v_neg)
                 elif isinstance(self.model, LightGCNModel):
-                    # Light propagation per user using their local subgraph.
-                    # For tractability in centralized training we approximate
-                    # by skipping per-user graph propagation here — the raw
-                    # u_vec serves as the user representation. The subsequent
-                    # FedAvg attack-phase round still propagates correctly
-                    # client-side (set_neighbors). This is a pragmatic
-                    # warmup-only approximation; it converges faster and the
-                    # attack phase reflects the true LightGCN scoring.
+                    # Same scoring as a client's LightGCNModel._propagate on its
+                    # star graph: layers alternate u, S_u, u, ... with
+                    # S_u = M_u^{-1/2} sum_{j in I_u} v_j, averaged over hops+1
+                    # layers; a user without items keeps its raw u.
+                    S = lgcn_nbr_sum(u_local, self.model.item_emb.weight,
+                                     total=int(lgcn_nbr_sum.deg_np[u_all_np[start:start + batch]].sum()))
+                    has = (lgcn_deg[u_local] > 0).unsqueeze(-1)
+                    u_til = torch.where(has, lgcn_a * u_vec + lgcn_b * S, u_vec)
                     v_pos = self.model.item_emb(pos_ids)
                     v_neg = self.model.item_emb(neg_ids)
-                    pos_s = (u_vec * v_pos).sum(-1)
-                    neg_s = (u_vec * v_neg).sum(-1)
+                    pos_s = (u_til * v_pos).sum(-1)
+                    neg_s = (u_til * v_neg).sum(-1)
                 else:  # MFModel
                     v_pos = self.model.item_emb(pos_ids)
                     v_neg = self.model.item_emb(neg_ids)
                     pos_s = (u_vec * v_pos).sum(-1)
                     neg_s = (u_vec * v_neg).sum(-1)
                 loss = -F.logsigmoid(pos_s - neg_s).mean()
+                if batch_l2 > 0:
+                    # LightGCN/NGCF-style: L2 on the batch's own (layer-0) rows only,
+                    # decay/2 * (|u|^2 + |v+|^2 + |v-|^2) / B -- untouched rows are not shrunk.
+                    loss = loss + batch_l2 * 0.5 * (u_vec.pow(2).sum() + v_pos.pow(2).sum()
+                                                    + v_neg.pow(2).sum()) / u_vec.shape[0]
                 opt.zero_grad(set_to_none=True)
                 loss.backward()
                 opt.step()
@@ -300,6 +349,21 @@ class TRIPServer:
         # Realised per-round assignment (after any block expansion): the solver
         # needs it to build the operator with the true 1/m and batch-split weights.
         self.last_assignments: List[Dict[int, List[int]]] = []
+        # PACT TB (v4, opt-in via pact.binding.enforce): clients compare each broadcast
+        # with the last one they ACCEPTED -- per-tensor norm ratios inside the band and
+        # append-only catalogue growth under the cap -- and abort the round otherwise.
+        # An aborted round releases nothing: no assignment, zero measurement rows.
+        tb = policy is not None and bool(getattr(policy, "tb_enforce", False))
+        self.tb_aborted = 0
+        if tb:
+            from ..pact.catalog import sanity_band
+
+            def _tb_norms() -> Dict[str, float]:
+                sd = self.model.state_dict()
+                return {k: float(sd[k].float().norm()) for k in self.model.shared_keys()}
+            tb_ref_norms = _tb_norms()
+            tb_ref_items = int(getattr(self.model, "n_items_original",
+                                       self.model.item_emb.weight.shape[0]))
         for t in iterator:
             snap = self.snapshot()
             if policy is not None:
@@ -314,6 +378,19 @@ class TRIPServer:
                 if isinstance(self.model, NCFModel) and gamma != 1.0:
                     from .probes import damp_ncf_mlp
                     damp_ncf_mlp(self.model, factor=gamma)
+                if tb:
+                    cur_norms = _tb_norms()
+                    cur_items = int(self.model.item_emb.weight.shape[0])
+                    grow_ok = (cur_items >= tb_ref_items and
+                               cur_items - tb_ref_items <= policy.catalog_growth_max * tb_ref_items)
+                    band_ok, why = sanity_band(tb_ref_norms, cur_norms, policy.theta_ratio_band)
+                    if not (grow_ok and band_ok):
+                        self.tb_aborted += 1
+                        policy.aborts.append(f"TB round {t}: " + (why or
+                                             f"catalogue {tb_ref_items}->{cur_items} above growth cap"))
+                        self.last_assignments.append({})
+                        continue                      # finally-block restores the model
+                    tb_ref_norms, tb_ref_items = cur_norms, cur_items
                 local_assign = allocator.assignments_for_round(t)
                 # PACT BC-2: a block participates all-or-none, so the server can
                 # only address whole blocks. The exposure operator then factors

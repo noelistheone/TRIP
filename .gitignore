@@ -14,6 +14,7 @@ data/
 # ---- Experiment outputs / artifacts ----
 results/
 logs/
+warmup_cache
 *.npz
 *.pt
 *.ckpt
@@ -28,9 +29,7 @@ draft/
 *.docx
 *.pdf
 
-# ---- Local assistant / editor / OS files ----
-CLAUDE.md
-.claude/
+# ---- Editor / OS files ----
 .vscode/
 .idea/
 .DS_Store

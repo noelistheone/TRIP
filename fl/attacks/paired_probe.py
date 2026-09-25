@@ -99,6 +99,8 @@ class PairedProbeAttack(AttackBase):
 
             self._state["G"] = G
             self._state["A"] = A
+            self._state["tb_aborted"] = int(getattr(trip, "tb_aborted", 0))
+            self._state["tb_rounds"] = len(trip.last_assignments)
             self._state["probe_base"] = probe_base
             self._state["pair_ids"] = pair_ids
             self._state["allocator"] = allocator

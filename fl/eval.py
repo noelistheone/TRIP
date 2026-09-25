@@ -145,14 +145,18 @@ def _make_attack_cfg(cfg: dict, dataset: str, model_name: str) -> dict:
     # progressively weaker adversaries (see the threat-model ablation).
     out["optimizer"] = str(cfg.get("attack_optimizer_override", "sgd")).lower()
     out["weight_decay"] = float(cfg.get("attack_weight_decay_override", 0.0))
-    out["lr"] = float(cfg.get("lr", 0.005))
+    out["lr"] = float(cfg.get("attack_lr_override", cfg.get("lr", 0.005)))
     # ATTACK PHASE: local_epochs MUST be small (default 1) so the user
     # embedding stays close to u^(0) during probe injection. With dense
     # datasets like amazon-book (45 items/user), warmup uses local_epochs=10
     # for convergence, but inheriting that into the attack causes 450 SGD
     # steps per round → user drifts ~2× initial norm → probe-row signal
     # decoheres → cos collapses to ~0.3. Cap to 1 universally.
-    out["local_epochs"] = int(cfg.get("attack_local_epochs", 1))
+    # "honest" (ladder rungs without C3b): clients keep their own epoch count.
+    le = cfg.get("attack_local_epochs", 1)
+    out["local_epochs"] = int(
+        _resolve_per_dataset(cfg, "local_epochs_overrides", dataset, cfg.get("local_epochs", 1))
+        if le == "honest" else le)
     out["attack_probes_only"] = bool(cfg.get("attack_probes_only", True))
     out["clients_per_round"] = int(cfg.get("clients_per_round", 128))
     return out
@@ -218,7 +222,7 @@ _WARMUP_CACHE_KEYS = (
 
 def _warmup_cache_path(dataset: str, model_name: str, cfg: dict, warm_cfg: dict,
                        n_warmup: int, bundle: DatasetBundle) -> Optional[Path]:
-    root = os.environ.get("FL_WARMUP_CACHE", "/data/lawrence/TRIP/warmup_cache")
+    root = os.environ.get("FL_WARMUP_CACHE", str(Path(__file__).resolve().parents[1] / "warmup_cache"))
     if not root:
         return None
     key = {
@@ -232,6 +236,14 @@ def _warmup_cache_path(dataset: str, model_name: str, cfg: dict, warm_cfg: dict,
         "model_cfg": {k: ({kk: vv for kk, vv in (cfg.get(k) or {}).items() if kk != "damp_factor"}
                           if isinstance(cfg.get(k), dict) else cfg.get(k)) for k in ("lightgcn", "ncf")},
     }
+    if cfg.get("warmup_batch_l2"):
+        # v4 E2b: per-batch L2 regulariser in the warm-up; only enters the key when set,
+        # so every existing checkpoint keeps its key.
+        key["batch_l2"] = float(cfg["warmup_batch_l2"])
+    if model_name == "lightgcn":
+        # v3: the centralized warm-up now propagates on each user's star graph
+        # (earlier checkpoints scored raw u^T v); keep the two apart.
+        key["lgcn_warmup"] = "star-propagate-v3"
     h = hashlib.sha1(json.dumps(key, sort_keys=True, default=str).encode()).hexdigest()[:16]
     return Path(root) / f"{dataset}_{model_name}_{h}.pt"
 
@@ -428,9 +440,15 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
 
         attack = _build_attack(attack_name, attack_cfg_base)
         attack.policy = policy
+        # v4 budget sweeps: per-client baselines may be run on the first n targets only
+        # (same warm-up, same ground truth, so they pair with the full runs target by target).
+        a_uids, a_Utrue = attacked_uids, U_true
+        n_sub = int(cfg.get("baseline_eval_n", 0) or 0)
+        if n_sub and attack_name not in ("paired_probe", "single_probe"):
+            a_uids, a_Utrue = attacked_uids[:n_sub], U_true[:n_sub]
         try:
-            attack.prepare(a_server, bundle, attacked_uids)
-            U_hat = attack.solve(a_server, bundle, attacked_uids)
+            attack.prepare(a_server, bundle, a_uids)
+            U_hat = attack.solve(a_server, bundle, a_uids)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -442,14 +460,14 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
         # Metrics
         eval_mask = getattr(attack, "eval_mask", None)
         metrics = _evaluate_recovery(
-            a_model, bundle, attacked_uids, U_hat, U_true, eval_mask,
+            a_model, bundle, a_uids, U_hat, a_Utrue, eval_mask,
             use_true_neighbors=bool(cfg.get('eval_lightgcn_use_true_neighbors', False)),
         )
         summary = {
             "dataset": dataset,
             "model": model_name,
             "attack": attack_name,
-            "n_attacked": int(len(attacked_uids)),
+            "n_attacked": int(len(a_uids)),
             "n_items": int(bundle.n_items),
             "n_users": int(bundle.n_users),
             "warmup_rounds": int(n_warmup),
@@ -457,6 +475,11 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
             **metrics,
             "timing": dict(attack.timing),
         }
+        if policy is not None and getattr(policy, "tb_enforce", False):
+            st_ = getattr(attack, "_state", {}) or {}
+            summary["tb_enforced"] = True
+            summary["tb_aborted_rounds"] = st_.get("tb_aborted")
+            summary["tb_rounds"] = st_.get("tb_rounds")
         summaries[attack_name] = summary
 
         # Persist artifacts
@@ -474,10 +497,10 @@ def run_experiment_multi_attack(dataset: str, model_name: str, cfg: dict,
             extra["A"] = _st["A"].astype(np.float32)   # weights 1/m can be fractional
         np.savez_compressed(
             npz_path,
-            U_hat=U_hat, true_U=U_true,
-            cos=_cos_per_row(U_hat, U_true),
-            attacked_uids=np.asarray(attacked_uids, dtype=np.int64),
-            eval_mask=(eval_mask if eval_mask is not None else np.ones(len(attacked_uids), dtype=bool)),
+            U_hat=U_hat, true_U=a_Utrue,
+            cos=_cos_per_row(U_hat, a_Utrue),
+            attacked_uids=np.asarray(a_uids, dtype=np.int64),
+            eval_mask=(eval_mask if eval_mask is not None else np.ones(len(a_uids), dtype=bool)),
             **extra,
         )
         print(f"[{dataset}/{model_name}/{attack_name}] cos_mean={summary['cos']['cos_mean']:.4f} "

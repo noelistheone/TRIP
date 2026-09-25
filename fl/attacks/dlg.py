@@ -126,6 +126,7 @@ class DLGAttack(AttackBase):
 
         U_hat = np.zeros((N, d), dtype=np.float32)
         per_user_times: List[float] = []
+        lb_iters: List[int] = []     # v4 budget diagnostics: L-BFGS iterations used per restart
 
         with self._time("solve_sec"):
             for i, uid in enumerate(attacked_uids):
@@ -138,6 +139,12 @@ class DLGAttack(AttackBase):
                 t_user = time.time()
                 best_u = None
                 best_loss = float("inf")
+                # The raw squared error is O(|delta|^2) ~ 1e-10, so its gradient
+                # sat below L-BFGS's tolerance and the solver never left its
+                # random start. Normalising by the observation's energy leaves
+                # the minimiser unchanged and makes the stopping rule scale-free.
+                obs_energy = float((obs ** 2).sum())
+                scale = 1.0 / obs_energy if obs_energy > 0 else 1.0
                 for r in range(n_restarts):
                     torch.manual_seed((uid + 1) * 11 + r)
                     u = (torch.randn(d, device=device) * 0.1).detach().clone().requires_grad_(True)
@@ -148,13 +155,20 @@ class DLGAttack(AttackBase):
                     def closure():
                         opt.zero_grad()
                         pred = simulate_delta(u, uid, train_items, server, round_idx)
-                        loss = ((pred - obs) ** 2).sum()
+                        loss = ((pred - obs) ** 2).sum() * scale
                         loss.backward()
                         return loss
 
                     try:
-                        loss_val = opt.step(closure)
-                        loss_f = float(loss_val) if loss_val is not None else float("inf")
+                        opt.step(closure)
+                        lb_iters.append(int(opt.state[opt._params[0]].get("n_iter", 0)))
+                        # LBFGS.step returns the loss at the START of the step, so the
+                        # restarts must be ranked by the loss at the solution; a restart
+                        # that diverged to a non-finite point is discarded.
+                        pred_end = simulate_delta(u, uid, train_items, server, round_idx)
+                        loss_f = float(((pred_end - obs) ** 2).sum() * scale)
+                        if not (np.isfinite(loss_f) and bool(torch.isfinite(u).all())):
+                            loss_f = float("inf")
                     except Exception:
                         loss_f = float("inf")
                     if loss_f < best_loss:
@@ -169,4 +183,9 @@ class DLGAttack(AttackBase):
 
         self.timing["per_user_solve_mean"] = float(np.mean(per_user_times)) if per_user_times else 0.0
         self.timing["per_user_solve_std"] = float(np.std(per_user_times)) if per_user_times else 0.0
+        if lb_iters:
+            li = np.asarray(lb_iters, dtype=float)
+            self.timing["budget_max_iter"] = int(max_iter)
+            self.timing["lbfgs_iters_mean"] = float(li.mean())
+            self.timing["hit_cap_frac"] = float((li >= max_iter).mean())
         return U_hat

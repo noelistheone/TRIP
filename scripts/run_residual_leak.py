@@ -39,7 +39,7 @@ def main():
     ap.add_argument("--cohort", type=int, default=128)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--gpu", type=int, default=None)
-    ap.add_argument("--out", default="/data/lawrence/TRIP/results/v2/residual_leak.json")
+    ap.add_argument("--out", default="results/residual_leak.json")
     a = ap.parse_args()
     cfg = yaml.safe_load(open(a.config))
     device = pick_gpu(default=a.gpu)

@@ -50,6 +50,8 @@ def main():
     ap.add_argument("--attack-rounds", type=int, default=40)
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--gpu", type=int, default=None)
+    ap.add_argument("--fed-wd", type=float, default=0.0,
+                    help="weight decay of benign/fresh rounds (honest federated recipe: 0)")
     ap.add_argument("--out", default="results/sentry")
     a = ap.parse_args()
 
@@ -66,6 +68,10 @@ def main():
     if _load_warmup(_warmup_cache_path(a.dataset, a.model, cfg, warm, n_warm, bundle),
                     model, server, device) is None:
         raise SystemExit(f"no warm-up checkpoint for {a.dataset}/{a.model}")
+    # Benign and fresh rounds follow the honest federated recipe of the utility
+    # runs (warm-up optimiser and rate, no weight decay). Set only after the
+    # checkpoint is loaded so the warm-up cache key is unchanged.
+    server.cfg = dict(warm, weight_decay=float(a.fed_wd))
 
     uids = sorted(bundle.train_user_ids)
     attacked = _select_attacked_uids(bundle, int(cfg["N_attack"]), 42)
