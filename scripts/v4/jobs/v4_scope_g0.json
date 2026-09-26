@@ -1,0 +1,197 @@
+[
+ {
+  "name": "v4_sentry_lastfm_ncf",
+  "cmd": "python scripts/run_sentry_eval.py --dataset lastfm --model ncf --config configs/headline_w21.yaml --benign-rounds 120 --fresh-rounds 200 --attack-rounds 40 --out results/v4/sentry",
+  "done": "results/v4/sentry/lastfm_ncf.json"
+ },
+ {
+  "name": "v4_sentry_delicious_ncf",
+  "cmd": "python scripts/run_sentry_eval.py --dataset delicious --model ncf --config configs/headline_w21.yaml --benign-rounds 120 --fresh-rounds 200 --attack-rounds 40 --out results/v4/sentry",
+  "done": "results/v4/sentry/delicious_ncf.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.1_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/ev_adapt_s0.1.yaml --out results/v4/evasion_adaptive/s0.1",
+  "done": "results/v4/evasion_adaptive/s0.1/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.3_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/ev_adapt_s0.3.yaml --out results/v4/evasion_adaptive/s0.3",
+  "done": "results/v4/evasion_adaptive/s0.3/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.3_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/ev_adapt_s0.3.yaml --out results/v4/evasion_adaptive/s0.3",
+  "done": "results/v4/evasion_adaptive/s0.3/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.3_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/ev_adapt_s0.3.yaml --out results/v4/evasion_adaptive/s0.3",
+  "done": "results/v4/evasion_adaptive/s0.3/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.3_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/ev_adapt_s0.3.yaml --out results/v4/evasion_adaptive/s0.3",
+  "done": "results/v4/evasion_adaptive/s0.3/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.3_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/ev_adapt_s0.3.yaml --out results/v4/evasion_adaptive/s0.3",
+  "done": "results/v4/evasion_adaptive/s0.3/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.5_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/ev_adapt_s0.5.yaml --out results/v4/evasion_adaptive/s0.5",
+  "done": "results/v4/evasion_adaptive/s0.5/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.6_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/ev_adapt_s0.6.yaml --out results/v4/evasion_adaptive/s0.6",
+  "done": "results/v4/evasion_adaptive/s0.6/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.6_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/ev_adapt_s0.6.yaml --out results/v4/evasion_adaptive/s0.6",
+  "done": "results/v4/evasion_adaptive/s0.6/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.6_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/ev_adapt_s0.6.yaml --out results/v4/evasion_adaptive/s0.6",
+  "done": "results/v4/evasion_adaptive/s0.6/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.6_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/ev_adapt_s0.6.yaml --out results/v4/evasion_adaptive/s0.6",
+  "done": "results/v4/evasion_adaptive/s0.6/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.6_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/ev_adapt_s0.6.yaml --out results/v4/evasion_adaptive/s0.6",
+  "done": "results/v4/evasion_adaptive/s0.6/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_evadapt_s0.707_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/ev_adapt_s0.707.yaml --out results/v4/evasion_adaptive/s0.707",
+  "done": "results/v4/evasion_adaptive/s0.707/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_heagg_delicious_lightgcn",
+  "cmd": "python scripts/run_he_immunity.py --config configs/headline_w21.yaml --datasets delicious --models lightgcn --baseline-mode aggregate --out-dir results/v4/he_aggregate && touch results/v4/he_aggregate/delicious_lightgcn.done",
+  "done": "results/v4/he_aggregate/delicious_lightgcn.done"
+ },
+ {
+  "name": "v4_heagg_amazon-beauty_mf",
+  "cmd": "python scripts/run_he_immunity.py --config configs/headline_w21.yaml --datasets amazon-beauty --models mf --baseline-mode aggregate --out-dir results/v4/he_aggregate && touch results/v4/he_aggregate/amazon-beauty_mf.done",
+  "done": "results/v4/he_aggregate/amazon-beauty_mf.done"
+ },
+ {
+  "name": "v4_heagg_amazon-beauty_ncf",
+  "cmd": "python scripts/run_he_immunity.py --config configs/headline_w21.yaml --datasets amazon-beauty --models ncf --baseline-mode aggregate --out-dir results/v4/he_aggregate && touch results/v4/he_aggregate/amazon-beauty_ncf.done",
+  "done": "results/v4/he_aggregate/amazon-beauty_ncf.done"
+ },
+ {
+  "name": "v4_tbnd_full_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_full_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/full",
+  "done": "results/v4/tb_nodamp/full/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tbnd_full_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_full_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/full",
+  "done": "results/v4/tb_nodamp/full/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tbnd_bc4_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_bc4_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/bc4",
+  "done": "results/v4/tb_nodamp/bc4/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tbnd_bc4_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_bc4_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/bc4",
+  "done": "results/v4/tb_nodamp/bc4/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tbnd_bc16_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_bc16_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/bc16",
+  "done": "results/v4/tb_nodamp/bc16/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tbnd_bc16_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_bc16_W21_tb_nodamp.yaml --out results/v4/tb_nodamp/bc16",
+  "done": "results/v4/tb_nodamp/bc16/delicious_ncf_paired_probe.json"
+ }
+]

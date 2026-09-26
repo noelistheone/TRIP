@@ -1,0 +1,42 @@
+[
+ {
+  "name": "v4_half_main_lastfm_mf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models mf --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_lastfm_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset lastfm --model mf --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/lastfm_mf_r200.json"
+ },
+ {
+  "name": "v4_half_main_lastfm_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models lightgcn --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_lastfm_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset lastfm --model lightgcn --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/lastfm_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_half_main_amazon-beauty_mf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models mf --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_amazon-beauty_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset amazon-beauty --model mf --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/amazon-beauty_mf_r200.json"
+ },
+ {
+  "name": "v4_half_main_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models lightgcn --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset amazon-beauty --model lightgcn --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/amazon-beauty_lightgcn_r200.json"
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "name": "v4_half_main_ml_mf",
+  "cmd": "python scripts/run_all.py --datasets ml --models mf --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_ml_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset ml --model mf --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/ml_mf_r200.json"
+ },
+ {
+  "name": "v4_half_main_ml_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets ml --models lightgcn --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_ml_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset ml --model lightgcn --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/ml_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_half_main_delicious_mf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models mf --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_delicious_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset delicious --model mf --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/delicious_mf_r200.json"
+ },
+ {
+  "name": "v4_half_main_delicious_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets delicious --models lightgcn --attacks paired_probe --config configs/uni2h_default.yaml --out results/v4/half/main --skip-existing",
+  "done": "results/v4/half/main/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_half_util_delicious_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset delicious --model lightgcn --config configs/uni2h_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/half/utility",
+  "done": "results/v4/half/utility/delicious_lightgcn_r200.json"
+ }
+]

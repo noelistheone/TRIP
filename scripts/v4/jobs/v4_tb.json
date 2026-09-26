@@ -1,0 +1,182 @@
+[
+ {
+  "name": "v4_tb_full_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_full_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/dg_full_W21_tb.yaml --out results/v4/tb/full",
+  "done": "results/v4/tb/full/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc4_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/dg_bc4_W21_tb.yaml --out results/v4/tb/bc4",
+  "done": "results/v4/tb/bc4/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_tb_bc16_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/dg_bc16_W21_tb.yaml --out results/v4/tb/bc16",
+  "done": "results/v4/tb/bc16/amazon-beauty_ncf_paired_probe.json"
+ }
+]

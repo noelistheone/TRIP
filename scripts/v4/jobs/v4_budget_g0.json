@@ -1,0 +1,202 @@
+[
+ {
+  "name": "v4_uni2_main_ml_mf",
+  "cmd": "python scripts/run_all.py --datasets ml --models mf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/ml_mf_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_ml_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset ml --model mf --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/ml_mf_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_ml_mf",
+  "cmd": "python scripts/run_one.py --dataset ml --model mf --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/ml_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_main_ml_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets ml --models lightgcn --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/ml_lightgcn_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_ml_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset ml --model lightgcn --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/ml_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_ml_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset ml --model lightgcn --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/ml_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_main_ml_ncf",
+  "cmd": "python scripts/run_all.py --datasets ml --models ncf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/ml_ncf_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_ml_ncf",
+  "cmd": "python scripts/run_defense_utility.py --dataset ml --model ncf --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/ml_ncf_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_ml_ncf",
+  "cmd": "python scripts/run_one.py --dataset ml --model ncf --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/ml_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_main_delicious_mf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models mf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/delicious_mf_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_delicious_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset delicious --model mf --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/delicious_mf_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_delicious_mf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model mf --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/delicious_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_main_delicious_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets delicious --models lightgcn --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/delicious_lightgcn_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_delicious_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset delicious --model lightgcn --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/delicious_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_delicious_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset delicious --model lightgcn --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/delicious_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_main_delicious_ncf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models ncf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni2_default.yaml --out results/v4/uniform_l2/main --skip-existing",
+  "done": "results/v4/uniform_l2/main/delicious_ncf_lti.json"
+ },
+ {
+  "name": "v4_uni2_w21_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/uni2_w21.yaml --out results/v4/uniform_l2/w21",
+  "done": "results/v4/uniform_l2/w21/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_util_delicious_ncf",
+  "cmd": "python scripts/run_defense_utility.py --dataset delicious --model ncf --config configs/uni2_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform_l2/utility",
+  "done": "results/v4/uniform_l2/utility/delicious_ncf_r200.json"
+ },
+ {
+  "name": "v4_uni2_bc16_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/uni2_dg_bc16_W21_tb.yaml --out results/v4/uniform_l2/bc16",
+  "done": "results/v4/uniform_l2/bc16/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni2_full_delicious_ncf",
+  "cmd": "python scripts/run_one.py --dataset delicious --model ncf --config configs/uni2_dg_full_W21_tb.yaml --out results/v4/uniform_l2/full",
+  "done": "results/v4/uniform_l2/full/delicious_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_budget_lastfm_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models lightgcn --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/lastfm_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_budget_delicious_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets delicious --models lightgcn --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/delicious_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_budget_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models lightgcn --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/amazon-beauty_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_budget_amazon-kindle_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-kindle --models lightgcn --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/amazon-kindle_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_budget_iFashion_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets iFashion --models lightgcn --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/iFashion_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_budget_lastfm_ncf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models ncf --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/lastfm_ncf_dlg.json"
+ },
+ {
+  "name": "v4_budget_delicious_ncf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models ncf --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/delicious_ncf_dlg.json"
+ },
+ {
+  "name": "v4_budget_amazon-beauty_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models ncf --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/amazon-beauty_ncf_dlg.json"
+ },
+ {
+  "name": "v4_budget_amazon-kindle_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-kindle --models ncf --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/amazon-kindle_ncf_dlg.json"
+ },
+ {
+  "name": "v4_budget_iFashion_ncf",
+  "cmd": "python scripts/run_all.py --datasets iFashion --models ncf --attacks invert_grad raifle dlg --config configs/budget_v4.yaml --out results/v4/budget --skip-existing",
+  "done": "results/v4/budget/iFashion_ncf_dlg.json"
+ }
+]

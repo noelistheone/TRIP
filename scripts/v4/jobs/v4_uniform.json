@@ -1,0 +1,152 @@
+[
+ {
+  "name": "v4_uni_main_lastfm_mf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models mf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/lastfm_mf_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_lastfm_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset lastfm --model mf --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/lastfm_mf_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_lastfm_mf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model mf --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/lastfm_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_main_lastfm_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models lightgcn --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/lastfm_lightgcn_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_lastfm_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset lastfm --model lightgcn --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/lastfm_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_lastfm_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model lightgcn --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/lastfm_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_main_lastfm_ncf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models ncf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/lastfm_ncf_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_lastfm_ncf",
+  "cmd": "python scripts/run_defense_utility.py --dataset lastfm --model ncf --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/lastfm_ncf_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_lastfm_ncf",
+  "cmd": "python scripts/run_one.py --dataset lastfm --model ncf --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/lastfm_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_main_amazon-beauty_mf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models mf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/amazon-beauty_mf_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_amazon-beauty_mf",
+  "cmd": "python scripts/run_defense_utility.py --dataset amazon-beauty --model mf --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/amazon-beauty_mf_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_amazon-beauty_mf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model mf --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/amazon-beauty_mf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_main_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models lightgcn --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/amazon-beauty_lightgcn_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_defense_utility.py --dataset amazon-beauty --model lightgcn --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/amazon-beauty_lightgcn_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model lightgcn --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/amazon-beauty_lightgcn_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_main_amazon-beauty_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models ncf --attacks paired_probe invert_grad raifle dlg lti --config configs/uni_default.yaml --out results/v4/uniform/main --skip-existing",
+  "done": "results/v4/uniform/main/amazon-beauty_ncf_lti.json"
+ },
+ {
+  "name": "v4_uni_w21_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/uni_w21.yaml --out results/v4/uniform/w21",
+  "done": "results/v4/uniform/w21/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_util_amazon-beauty_ncf",
+  "cmd": "python scripts/run_defense_utility.py --dataset amazon-beauty --model ncf --config configs/uni_pact_full.yaml --rounds 200 --cohort 128 --seeds 42 43 44 --fed-wd 0.0 --check-masks --out results/v4/uniform/utility",
+  "done": "results/v4/uniform/utility/amazon-beauty_ncf_r200.json"
+ },
+ {
+  "name": "v4_uni_bc16_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/uni_dg_bc16_W21_tb.yaml --out results/v4/uniform/bc16",
+  "done": "results/v4/uniform/bc16/amazon-beauty_ncf_paired_probe.json"
+ },
+ {
+  "name": "v4_uni_full_amazon-beauty_ncf",
+  "cmd": "python scripts/run_one.py --dataset amazon-beauty --model ncf --config configs/uni_dg_full_W21_tb.yaml --out results/v4/uniform/full",
+  "done": "results/v4/uniform/full/amazon-beauty_ncf_paired_probe.json"
+ }
+]

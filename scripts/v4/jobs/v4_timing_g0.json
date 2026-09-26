@@ -1,0 +1,77 @@
+[
+ {
+  "name": "v4_time_douban-book_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets douban-book --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/douban-book_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-beauty_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-beauty_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_gowalla_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets gowalla --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/gowalla_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_iFashion_ncf",
+  "cmd": "python scripts/run_all.py --datasets iFashion --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/iFashion_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-book_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-book --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-book_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_iFashion_mf",
+  "cmd": "python scripts/run_all.py --datasets iFashion --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/iFashion_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_douban-book_ncf",
+  "cmd": "python scripts/run_all.py --datasets douban-book --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/douban-book_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_yelp2018_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets yelp2018 --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/yelp2018_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_lastfm_ncf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/lastfm_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_delicious_ncf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/delicious_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_yelp2018_ncf",
+  "cmd": "python scripts/run_all.py --datasets yelp2018 --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/yelp2018_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_douban-book_mf",
+  "cmd": "python scripts/run_all.py --datasets douban-book --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/douban-book_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_yelp2018_mf",
+  "cmd": "python scripts/run_all.py --datasets yelp2018 --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/yelp2018_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_delicious_mf",
+  "cmd": "python scripts/run_all.py --datasets delicious --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/delicious_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_lastfm_mf",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/lastfm_mf_dlg.json"
+ }
+]

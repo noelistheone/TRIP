@@ -1,0 +1,77 @@
+[
+ {
+  "name": "v4_time_lastfm_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets lastfm --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/lastfm_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_iFashion_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets iFashion --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/iFashion_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-kindle_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets amazon-kindle --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-kindle_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_delicious_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets delicious --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/delicious_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-book_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-book --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-book_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-kindle_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-kindle --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-kindle_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_ml_lightgcn",
+  "cmd": "python scripts/run_all.py --datasets ml --models lightgcn --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/ml_lightgcn_dlg.json"
+ },
+ {
+  "name": "v4_time_ml_ncf",
+  "cmd": "python scripts/run_all.py --datasets ml --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/ml_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_gowalla_ncf",
+  "cmd": "python scripts/run_all.py --datasets gowalla --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/gowalla_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-beauty_ncf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models ncf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-beauty_ncf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-book_mf",
+  "cmd": "python scripts/run_all.py --datasets amazon-book --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-book_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-kindle_mf",
+  "cmd": "python scripts/run_all.py --datasets amazon-kindle --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-kindle_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_gowalla_mf",
+  "cmd": "python scripts/run_all.py --datasets gowalla --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/gowalla_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_ml_mf",
+  "cmd": "python scripts/run_all.py --datasets ml --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/ml_mf_dlg.json"
+ },
+ {
+  "name": "v4_time_amazon-beauty_mf",
+  "cmd": "python scripts/run_all.py --datasets amazon-beauty --models mf --attacks paired_probe invert_grad raifle dlg --config configs/default.yaml --out results/v4/timing --skip-existing",
+  "done": "results/v4/timing/amazon-beauty_mf_dlg.json"
+ }
+]
